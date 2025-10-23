@@ -12,7 +12,7 @@ Build a clean, modern application that detects and analyzes purchase intent sign
 
 ### Architecture Requirements:
 - **Components < 400 lines** - Keep everything maintainable
-- **LED Breadcrumbs** - Instrument all critical operations (ranges 1000-9099)
+- **LED Breadcrumbs** - Instrument all critical operations (Purchase Intent: 500-4599, General: 5000-9099)
 - **Quality first** - Robust, production-ready code only
 
 ## Available Agents
@@ -136,7 +136,7 @@ When creating any planning document:
 - **Present findings to user** with specific breadcrumb evidence
 
 ### Why This Matters:
-The console output contains too much data for humans to monitor effectively. LED breadcrumbs (numbered 1000-9099) are designed to be machine-readable so Claude can:
+The console output contains too much data for humans to monitor effectively. LED breadcrumbs (Purchase Intent: 500-4599, General: 5000-9099) are designed to be machine-readable so Claude can:
 1. Quickly filter logs for relevant operations
 2. Identify exactly which step in a process failed
 3. Trace execution flow through complex operations
@@ -163,10 +163,15 @@ Claude: "I found the issue. LED breadcrumb 2045 fired successfully
 ```
 
 ### LED Breadcrumb Ranges
-- **1000-1099**: Application startup and initialization
-- **2000-2099**: Intent detection and classification
-- **3000-3099**: Data processing and transformation
-- **4000-4099**: ML inference and predictions
+
+**Purchase Intent System (Agents 0-4): 500-4599**
+- **500-599**: Agent 0 - Topic Research Agent
+- **1500-1599**: Agent 1 - Product Researcher
+- **2500-2599**: Agent 2 - Demographics Analyst
+- **3500-3599**: Agent 3 - Persona Generator
+- **4500-4599**: Agent 4 - ParaThinker Intent Simulator
+
+**General Application (if needed for other features): 5000-9099**
 - **5000-5099**: Analytics and reporting
 - **6000-6099**: API integration
 - **7000-7099**: UI interactions and state management

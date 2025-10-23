@@ -181,20 +181,84 @@ Build Agent 0 (Topic Research tool) to find high-demand ebook topics
 
 ## When to Use This Agent
 
-**End of every session** where:
-- Important decisions were made
-- Research was completed
-- Designs were approved
-- You're about to hit /compact
+**CRITICAL - Run at START of new session, not end:**
 
-**Command for user:**
+Because Claude can freeze unexpectedly (even at 57% context), the workflow is:
+
+1. **When Claude freezes:** User runs `python save-session.py` (always works, local script)
+2. **Next session (when Claude works):** Invoke this agent to process unprocessed context files
+
+**How to invoke:**
 ```
-Use the session-summarizer agent to create a handoff summary
-from Context/2025-10-22/session-XX-XX-XX.md
+Use the session-summarizer agent to process all unprocessed context files
+in Context/[today's date]/ and append summaries to HANDOFF file
 ```
+
+## Multi-File Processing Protocol
+
+**CRITICAL:** This agent must handle multiple unprocessed session files EFFICIENTLY:
+
+### Step 1: Find Current Date Folder
+- Use Glob to find: `Context/YYYY-MM-DD/` for today (or specify date)
+
+### Step 2: Check HANDOFF File FIRST (CRITICAL - Avoid Wasting Tokens)
+- **FIRST ACTION**: Use Glob to find `Context/[date]/*HANDOFF*.md` or `Context/[date]/COMBINED-SESSION-HANDOFF.md`
+- If HANDOFF file exists, READ IT to extract already-processed session files
+- Look for patterns: "**Source:** session-XX-XX-XX.md" or "Context/[date]/session-XX-XX-XX.md"
+- Build list of PROCESSED files
+- If HANDOFF doesn't exist, nothing has been processed yet (all files are new)
+
+### Step 3: Find Unprocessed Sessions (Compare Before Reading)
+- Use Glob to find all: `Context/[date]/session-*.md`
+- **CRITICAL**: Compare filenames with processed list from Step 2
+- **DO NOT READ** any session files that are already in the HANDOFF
+- Identify ONLY the unprocessed session files (new ones not yet summarized)
+- **EFFICIENCY**: Only read unprocessed files to avoid wasting tokens on files already summarized
+
+### Step 4: Process Each Unprocessed Session
+For each unprocessed session file:
+- Extract decisions, blockers, next actions
+- Append to HANDOFF using this format:
+
+```markdown
+---
+
+## Session: session-16-39-46.md
+
+**Source:** `Context/2025-10-22/session-16-39-46.md`
+**Processed:** [current timestamp]
+
+### ✅ Decisions Made
+- [Decision 1]
+- [Decision 2]
+
+### ❌ Ruled Out
+- [What was rejected]
+
+### 📋 Next Actions
+1. [Action 1]
+2. [Action 2]
+
+---
+```
+
+### Step 5: Report Summary
+Tell user:
+- How many session files were processed
+- Which files were processed
+- Key decisions/actions from each
 
 ## Output Location
 
-Save to: `Context/[date]/HANDOFF-[date].md`
+**Append to:** `Context/[date]/HANDOFF-[date].md`
 
-This becomes the START point for the next session.
+**Format:**
+- If first run: Create HANDOFF file with header
+- If subsequent runs: APPEND new session summaries with separator
+- Each session clearly marked with source filename
+
+**This allows:**
+- Multiple sessions per day to accumulate
+- Clear tracking of which sessions have been processed
+- Running summarizer at START of next session when Claude is responsive
+- Never losing decisions even if Claude freezes mid-session

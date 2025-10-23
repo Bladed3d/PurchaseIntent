@@ -190,8 +190,73 @@ Claude: "I found the issue. LED breadcrumb 2045 fired successfully
 
 **Rationale:** Hard-coded fake data creates maintenance debt, confuses users, and can accidentally ship to production. Always keep test data separate from application code.
 
+## Version Control & Git Workflow
+**CRITICAL: This project uses git for version control**
+
+### GitHub Repository
+- **Remote:** https://github.com/Bladed3d/PurchaseIntent.git
+- **Branch:** main
+- **Status:** Active, all work must be committed
+
+### Document Versioning Protocol
+When user asks to "version" a document:
+1. ✅ **CORRECT:** Create new file with version suffix
+   - Example: `design-v1.md` → keep original, create `design-v2.md`
+   - OR: `design.md` → keep original, create `design-2024-10-22.md`
+2. ❌ **WRONG:** Edit the original file in place
+   - Never overwrite original documents
+   - Never just update version number in metadata
+
+### Git Commit Workflow
+**Before making significant changes:**
+1. Check git status: `git status`
+2. Create feature branch if needed: `git checkout -b feature/agent-0`
+3. Make changes
+4. Stage files: `git add [files]`
+5. Commit with descriptive message
+6. Push to GitHub: `git push origin [branch]`
+
+**Commit message format:**
+```
+Brief description of changes (50 chars max)
+
+- Bullet point of what changed
+- Why the change was needed
+- Any breaking changes
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude <noreply@anthropic.com>
+```
+
+### What to Commit
+✅ **Always commit:**
+- Source code files
+- Documentation (Docs/*.md)
+- Architecture designs
+- Configuration files (CLAUDE.md, .claude/*)
+- Session handoff files (Context/**/HANDOFF-*.md)
+
+❌ **Never commit:**
+- API keys or secrets (.env files)
+- Large session logs (Context/**/session-*.md)
+- Temporary data (temp/, cache/)
+- Node modules or Python venv
+- Personal notes with sensitive info
+
+See `.gitignore` for complete list.
+
+### Critical Lesson
+**Why this matters:** In session 2025-10-22, a document (4-agents-design.md v1.1) was overwritten instead of versioned, destroying original work. Git prevents this by:
+- Tracking all changes
+- Allowing reversion to any previous state
+- Preserving history even when files are edited
+
+**Always commit before major changes** to create recovery points.
+
 ## Success Criteria
 - Clean, maintainable codebase that any developer can understand
 - Comprehensive LED breadcrumb coverage for debugging
 - Production-ready with robust error handling
 - Zero hard-coded fake data in production code
+- **All significant work committed to git with clear history**

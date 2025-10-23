@@ -1,0 +1,18 @@
+Survey different AI for their response:
+
+Please read: "D:\Projects\Ai\Purchase-Intent\LLM-Predict-Purchase-Intent.pdf" and create
+    a plan for creating an AI powered system for testing products, books, course material,
+   advertising, and landing pages to identify how target customers will respond. Write this
+    plan to \Docs\Predict-Intent-GLM.md
+	
+Submitting to GLM, Sonnet 4.5, Grok 4
+
+
+>  Give me a version 3 by reviewing all three plans and combine the very best ideas to make
+    an even better design. 3 docs:
+   "D:\Projects\Ai\Purchase-Intent\Docs\Predict-Intent-Sonnet45-v2.0-DevPlan.md",
+   "D:\Projects\Ai\Purchase-Intent\Docs\Predict-Intent-GLM.md",
+   "D:\Projects\Ai\Purchase-Intent\Docs\Predict-Intent-Grok.md" and write it to
+   \Docs\Predict_Intent-v3.md
+
+   

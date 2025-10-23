@@ -1,0 +1,9 @@
+Just use ChatGPT with a prompt like:
+
+     Act as a [target demographic] evaluating this project idea:
+     [Your project description]
+
+     Rate your purchase intent 1-5 and explain your reasoning.
+
+   Do this with 5-10 different persona prompts. You'll get 80% of the value of your
+   sophisticated system with 0 development time.

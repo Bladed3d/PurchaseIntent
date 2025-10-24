@@ -1,18 +1,21 @@
 """
 Agent 0 Topic Scoring Algorithm
 Combines signals from Google Trends, Reddit, and YouTube into composite demand score
+Now includes competition analysis for opportunity scoring
 """
 
 from typing import Dict, List
 from lib.breadcrumb_system import BreadcrumbTrail
 from .config import Agent0Config as Config
+from .competition_analyzer import CompetitionAnalyzer
 
 
 class TopicScorer:
-    """Calculates composite demand scores for topics"""
+    """Calculates composite demand scores and opportunity scores for topics"""
 
     def __init__(self, trail: BreadcrumbTrail):
         self.trail = trail
+        self.competition_analyzer = CompetitionAnalyzer(trail)
 
     def normalize_trends_score(self, trends_data: Dict) -> float:
         """
@@ -131,7 +134,7 @@ class TopicScorer:
         youtube_data: Dict
     ) -> Dict:
         """
-        Calculate weighted composite demand score
+        Calculate weighted composite demand score with competition analysis
 
         Returns dict with:
         - composite_score: 0-100 overall demand score
@@ -139,17 +142,20 @@ class TopicScorer:
         - reddit_score: normalized Reddit score
         - youtube_score: normalized YouTube score
         - confidence: 0-100 confidence in score accuracy
+        - competition: dict with competition metrics
+        - opportunity: dict with opportunity score and recommendation
+        - insights: list of competitive insights
         """
         self.trail.light(Config.LED_SCORING_START, {
             "action": "calculate_scores"
         })
 
-        # Normalize each source
+        # Normalize each source (DEMAND scoring)
         trends_score = self.normalize_trends_score(trends_data)
         reddit_score = self.normalize_reddit_score(reddit_data)
         youtube_score = self.normalize_youtube_score(youtube_data)
 
-        # Weighted composite
+        # Weighted composite DEMAND score
         composite = (
             trends_score * Config.WEIGHT_GOOGLE_TRENDS +
             reddit_score * Config.WEIGHT_REDDIT +
@@ -166,48 +172,83 @@ class TopicScorer:
         # Confidence: 3 sources = 100%, 2 sources = 70%, 1 source = 40%
         confidence = {3: 100, 2: 70, 1: 40, 0: 0}[sources_with_data]
 
+        # Analyze COMPETITION
+        competition = self.competition_analyzer.calculate_overall_competition(
+            trends_data,
+            reddit_data,
+            youtube_data
+        )
+
+        # Calculate OPPORTUNITY score (demand vs competition)
+        opportunity = self.competition_analyzer.calculate_opportunity_score(
+            composite,  # demand_score
+            competition['overall_competition']  # competition_score
+        )
+
+        # Get competitive insights
+        insights = self.competition_analyzer.get_competitive_insights(
+            trends_data,
+            reddit_data,
+            youtube_data,
+            opportunity
+        )
+
         result = {
+            # Demand metrics (original)
             "composite_score": round(composite, 2),
             "trends_score": round(trends_score, 2),
             "reddit_score": round(reddit_score, 2),
             "youtube_score": round(youtube_score, 2),
             "confidence": confidence,
-            "sources_with_data": sources_with_data
+            "sources_with_data": sources_with_data,
+
+            # Competition metrics (NEW)
+            "competition": competition,
+
+            # Opportunity metrics (NEW)
+            "opportunity": opportunity,
+
+            # Insights (NEW)
+            "insights": insights
         }
 
         self.trail.light(Config.LED_SCORING_START + 1, {
             "action": "scoring_complete",
-            **result
+            "demand": round(composite, 2),
+            "competition": round(competition['overall_competition'], 2),
+            "opportunity": round(opportunity['opportunity_score'], 2)
         })
 
         return result
 
     def rank_topics(self, topic_data: List[Dict]) -> List[Dict]:
         """
-        Rank topics by composite score
+        Rank topics by opportunity score (demand vs competition)
 
         Input: List of dicts with 'topic' and 'scores' keys
-        Output: Sorted list (highest score first)
+        Output: Sorted list (highest opportunity first)
         """
-        self.trail.light(Config.LED_SCORING_START + 2, {
+        self.trail.light(Config.LED_SCORING_START + 7, {
             "action": "rank_topics",
             "total_topics": len(topic_data)
         })
 
-        # Sort by composite score, then by confidence
+        # Sort by opportunity score (primary), then confidence (secondary)
         ranked = sorted(
             topic_data,
             key=lambda x: (
-                x['scores']['composite_score'],
+                x['scores']['opportunity']['opportunity_score'],
                 x['scores']['confidence']
             ),
             reverse=True
         )
 
-        self.trail.light(Config.LED_SCORING_START + 3, {
+        self.trail.light(Config.LED_SCORING_START + 8, {
             "action": "ranking_complete",
             "top_topic": ranked[0]['topic'] if ranked else None,
-            "top_score": ranked[0]['scores']['composite_score'] if ranked else 0
+            "top_opportunity": ranked[0]['scores']['opportunity']['opportunity_score'] if ranked else 0,
+            "top_demand": ranked[0]['scores']['composite_score'] if ranked else 0,
+            "top_competition": ranked[0]['scores']['competition']['overall_competition'] if ranked else 0
         })
 
         return ranked

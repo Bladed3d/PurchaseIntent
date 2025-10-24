@@ -1,5 +1,26 @@
 # Purchase-Intent - Development Instructions
 
+## 🚨 CRITICAL: NEVER SUGGEST PAID CLAUDE API
+
+**USER HAS CLAUDE PRO SUBSCRIPTION - NO ADDITIONAL COSTS ALLOWED**
+
+❌ **ABSOLUTELY FORBIDDEN - NEVER suggest:**
+- "Use Claude API"
+- "Call Claude API directly"
+- "Integrate with Anthropic API"
+- "Use Claude via API"
+- ANY solution that requires paying for API access beyond existing subscription
+
+✅ **ALLOWED approaches:**
+- Use Task tool to launch agents (included in subscription)
+- Manual workflows where Claude assists during conversation
+- File-based communication between Python and Claude
+- Any solution that uses ONLY the subscription features
+
+**RATIONALE:** User pays for monthly subscription. Suggesting paid API is redundant and wastes user's time explaining this repeatedly.
+
+---
+
 ## Project Mission
 Build a clean, modern application that detects and analyzes purchase intent signals using AI-powered analysis.
 

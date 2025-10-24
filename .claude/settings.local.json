@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "WebFetch(domain:medium.com)",
+      "WebFetch(domain:incident.io)",
+      "WebFetch(domain:simonwillison.net)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

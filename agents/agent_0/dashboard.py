@@ -433,6 +433,14 @@ class DashboardGenerator:
             margin-bottom: 8px;
         }}
 
+        .node-checkbox {{
+            margin-right: 10px;
+            cursor: pointer;
+            width: 18px;
+            height: 18px;
+            flex-shrink: 0;
+        }}
+
         .node-item:hover {{
             background: #e3f2fd;
             border-left-color: #2196F3;
@@ -703,12 +711,40 @@ class DashboardGenerator:
 
         function toggleTopicSelection(nodeId) {{
             const checkbox = document.getElementById(`check-${{nodeId}}`);
-            if (checkbox.checked) {{
+            const isChecked = checkbox.checked;
+
+            // Update this node
+            if (isChecked) {{
                 selectedTopics.add(nodeId);
             }} else {{
                 selectedTopics.delete(nodeId);
             }}
+
+            // Find node and cascade to children
+            const node = findNodeById(treeData.root_nodes, nodeId);
+            if (node && node.children) {{
+                cascadeCheckboxes(node.children, isChecked);
+            }}
+
             updateChartFromSelection();
+        }}
+
+        function cascadeCheckboxes(nodes, checked) {{
+            if (!nodes) return;
+            for (const node of nodes) {{
+                const childCheckbox = document.getElementById(`check-${{node.id}}`);
+                if (childCheckbox) {{
+                    childCheckbox.checked = checked;
+                    if (checked) {{
+                        selectedTopics.add(node.id);
+                    }} else {{
+                        selectedTopics.delete(node.id);
+                    }}
+                }}
+                if (node.children) {{
+                    cascadeCheckboxes(node.children, checked);
+                }}
+            }}
         }}
 
         function updateChartFromSelection() {{
@@ -1055,14 +1091,15 @@ class DashboardGenerator:
             has_children = node.get('children') and len(node.get('children', [])) > 0
             toggle_html = f'<span class="toggle-btn" id="toggle-{node["id"]}" onclick="event.stopPropagation(); toggleChildren(\'{node["id"]}\')">{"▼" if has_children else "  "}</span>' if has_children else ''
 
-            # Build node HTML
+            # Build node HTML with checkbox
             node_html = f'''
             <div class="tree-node level-{level}">
-                <div class="node-item {category}" data-node-id="{node["id"]}" onclick="selectNode('{node["id"]}')">
+                <div class="node-item {category}" data-node-id="{node["id"]}">
+                    <input type="checkbox" id="check-{node["id"]}" class="node-checkbox" checked onchange="toggleTopicSelection('{node["id"]}')" onclick="event.stopPropagation()">
                     {toggle_html}
-                    <span class="node-icon">{icon}</span>
-                    <span class="node-text">{node["topic"]}</span>
-                    <span class="node-score {category}">{score:.1f}</span>
+                    <span class="node-icon" onclick="selectNode('{node["id"]}')">{icon}</span>
+                    <span class="node-text" onclick="selectNode('{node["id"]}')">{node["topic"]}</span>
+                    <span class="node-score {category}" onclick="selectNode('{node["id"]}')">{score:.1f}</span>
                 </div>
             '''
 

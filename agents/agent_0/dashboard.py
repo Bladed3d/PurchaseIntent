@@ -20,7 +20,7 @@ class DashboardGenerator:
     def __init__(self, trail: BreadcrumbTrail):
         self.trail = trail
 
-    def generate_html(self, ranked_topics: List[Dict], output_path: str) -> str:
+    def generate_html(self, ranked_topics: List[Dict], output_path: str, queue_manager=None) -> str:
         """
         Generate HTML dashboard with topic rankings
 
@@ -536,10 +536,11 @@ class DashboardGenerator:
             position: fixed;
             background: white;
             border: 2px solid #667eea;
-            border-radius: 8px;
-            padding: 20px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
-            max-width: 500px;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+            max-width: 700px;
+            max-height: 85vh;
             z-index: 1000;
         }}
 
@@ -805,26 +806,114 @@ class DashboardGenerator:
             const content = document.getElementById('popupContent');
 
             const scores = topicData.scores || {{}};
-            const aiDesc = topicData.ai_description || topicData.description || "No description available";
-            const demandScore = scores.opportunity?.demand_score || scores.composite_score;
-            const compScore = scores.opportunity?.competition_score || scores.competition?.overall_competition;
+            const aiDesc = topicData.ai_description || topicData.description || scores.ai_description || "No description available";
+            const demandScore = scores.opportunity?.demand_score || scores.composite_score || 0;
+            const compScore = scores.opportunity?.competition_score || scores.competition?.overall_competition || 0;
+            const opportunityScore = scores.opportunity?.opportunity_score || 0;
             const category = scores.opportunity?.recommendation || scores.zone || 'Unknown';
+            const audienceSize = scores.audience_size || 0;
+            const insights = scores.insights || [];
+
+            // Reddit data
+            const redditData = topicData.reddit_data || {{}};
+            const topSubreddits = redditData.top_subreddits || [];
+
+            // YouTube data
+            const youtubeData = topicData.youtube_data || {{}};
+            const topChannels = youtubeData.top_channels || [];
+
+            // Build insights HTML
+            const insightsHTML = insights.length > 0
+                ? insights.map(insight => `<div style="margin: 4px 0;">${{insight}}</div>`).join('')
+                : '<div style="color: #999;">No insights available</div>';
+
+            // Build Reddit communities HTML with clickable links
+            const redditHTML = topSubreddits.length > 0
+                ? topSubreddits.map(sub => `
+                    <div style="padding: 8px; background: #f5f5f5; border-radius: 4px; margin: 4px 0;">
+                        <a href="https://reddit.com/r/${{sub.name}}" target="_blank" style="color: #667eea; text-decoration: none;">
+                            r/${{sub.name}}
+                        </a> - ${{sub.count}} members
+                    </div>
+                `).join('')
+                : '<div style="color: #999; padding: 8px;">No Reddit data available</div>';
+
+            // Build YouTube channels HTML with clickable links (encoded for search)
+            const youtubeHTML = topChannels.length > 0
+                ? topChannels.map(channel => `
+                    <div style="padding: 8px; background: #f5f5f5; border-radius: 4px; margin: 4px 0;">
+                        <a href="https://youtube.com/results?search_query=${{encodeURIComponent(channel.name)}}" target="_blank" style="color: #667eea; text-decoration: none;">
+                            ${{channel.name}}
+                        </a> - ${{channel.count}} subscribers
+                    </div>
+                `).join('')
+                : '<div style="color: #999; padding: 8px;">No YouTube data available</div>';
 
             content.innerHTML = `
-                <h3>${{topicData.topic}}</h3>
-                <div class="info-section">
-                    <strong>AI Description:</strong><br>
-                    ${{aiDesc}}
-                </div>
-                <div class="info-section">
-                    <strong>Composite Score:</strong> ${{scores.composite_score?.toFixed(1) || 'N/A'}}<br>
-                    <strong>Demand Score:</strong> ${{demandScore?.toFixed(1) || 'N/A'}}<br>
-                    <strong>Competition Score:</strong> ${{compScore?.toFixed(1) || 'N/A'}}<br>
-                    <strong>Confidence:</strong> ${{scores.confidence?.toFixed(1) || 'N/A'}}%
-                </div>
-                <div class="info-section">
-                    <strong>Sources:</strong> ${{scores.sources_with_data || 0}} AI agents<br>
-                    <strong>Category:</strong> ${{category}}
+                <div style="max-height: calc(85vh - 100px); overflow-y: auto; padding-right: 8px;">
+                    <h3 style="margin: 0 0 12px 0; color: #667eea;">${{topicData.topic}}</h3>
+
+                    <div style="background: #e8f5e9; padding: 12px; border-radius: 6px; margin-bottom: 16px;">
+                        <div style="font-weight: 600; font-size: 18px;">Score: ${{scores.composite_score?.toFixed(1) || 'N/A'}}</div>
+                    </div>
+
+                    <div style="margin-bottom: 16px; padding: 12px; background: #f9f9f9; border-radius: 6px; border-left: 3px solid #667eea;">
+                        <div style="font-weight: 600; margin-bottom: 8px; color: #667eea;">AI Description:</div>
+                        <div style="font-size: 14px; line-height: 1.6; color: #333;">
+                            ${{aiDesc}}
+                        </div>
+                    </div>
+
+                    <div style="margin-bottom: 16px;">
+                        <div style="font-weight: 600; margin-bottom: 8px; display: flex; align-items: center;">
+                            <span style="margin-right: 6px;">📊</span> Key Insights
+                        </div>
+                        <div style="font-size: 14px; line-height: 1.6;">
+                            ${{insightsHTML}}
+                        </div>
+                    </div>
+
+                    <div style="margin-bottom: 16px;">
+                        <div style="font-weight: 600; margin-bottom: 8px; display: flex; align-items: center;">
+                            <span style="margin-right: 6px;">📈</span> Metrics
+                        </div>
+                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 12px;">
+                            <div style="padding: 12px; background: #f5f5f5; border-radius: 6px; border-left: 3px solid #667eea;">
+                                <div style="font-size: 12px; color: #666;">Demand Score</div>
+                                <div style="font-size: 20px; font-weight: 600;">${{demandScore.toFixed(1)}}</div>
+                            </div>
+                            <div style="padding: 12px; background: #f5f5f5; border-radius: 6px; border-left: 3px solid #ff9800;">
+                                <div style="font-size: 12px; color: #666;">Competition</div>
+                                <div style="font-size: 20px; font-weight: 600;">${{compScore.toFixed(1)}}</div>
+                            </div>
+                            <div style="padding: 12px; background: #f5f5f5; border-radius: 6px; border-left: 3px solid #4caf50;">
+                                <div style="font-size: 12px; color: #666;">Opportunity</div>
+                                <div style="font-size: 20px; font-weight: 600;">${{opportunityScore.toFixed(1)}}</div>
+                            </div>
+                        </div>
+                        <div style="padding: 12px; background: #f5f5f5; border-radius: 6px;">
+                            <div style="font-size: 12px; color: #666;">Audience Size</div>
+                            <div style="font-size: 18px; font-weight: 600;">${{audienceSize.toLocaleString()}}</div>
+                        </div>
+                    </div>
+
+                    <div style="margin-bottom: 16px;">
+                        <div style="font-weight: 600; margin-bottom: 8px; display: flex; align-items: center;">
+                            <span style="margin-right: 6px;">🔥</span> Top Reddit Communities
+                        </div>
+                        <div>
+                            ${{redditHTML}}
+                        </div>
+                    </div>
+
+                    <div style="margin-bottom: 8px;">
+                        <div style="font-weight: 600; margin-bottom: 8px; display: flex; align-items: center;">
+                            <span style="margin-right: 6px;">📺</span> Top YouTube Channels
+                        </div>
+                        <div>
+                            ${{youtubeHTML}}
+                        </div>
+                    </div>
                 </div>
             `;
 
@@ -836,6 +925,13 @@ class DashboardGenerator:
 
         function closePopup() {{
             document.getElementById('infoPopup').classList.remove('active');
+        }}
+
+        function showTopicSummary(nodeId) {{
+            const node = findNodeById(treeData.root_nodes, nodeId);
+            if (!node || !node.data) return;
+
+            showInfo(node.data);
         }}
 
         function updateChart(topics) {{
@@ -1093,12 +1189,15 @@ class DashboardGenerator:
             toggle_html = f'<span class="toggle-btn" id="toggle-{node["id"]}" onclick="event.stopPropagation(); toggleChildren(\'{node["id"]}\')">{"▼" if has_children else "  "}</span>' if has_children else ''
 
             # Build node HTML with checkbox
+            # Paper icon shows popup, other elements select node
+            icon_click = f"event.stopPropagation(); showTopicSummary('{node['id']}')" if icon == '📄' else f"selectNode('{node['id']}')"
+
             node_html = f'''
             <div class="tree-node level-{level}">
                 <div class="node-item {category}" data-node-id="{node["id"]}">
                     <input type="checkbox" id="check-{node["id"]}" class="node-checkbox" checked onchange="toggleTopicSelection('{node["id"]}')" onclick="event.stopPropagation()">
                     {toggle_html}
-                    <span class="node-icon" onclick="selectNode('{node["id"]}')">{icon}</span>
+                    <span class="node-icon" onclick="{icon_click}">{icon}</span>
                     <span class="node-text" onclick="selectNode('{node["id"]}')">{node["topic"]}</span>
                     <span class="node-score {category}" onclick="selectNode('{node["id"]}')">{score:.1f}</span>
                 </div>

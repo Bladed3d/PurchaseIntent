@@ -755,7 +755,8 @@ class DashboardGenerator:
                     topicsToShow.push(node.data);
                 }}
             }}
-            updateChart(topicsToShow.length > 0 ? topicsToShow : allTopics);
+            // Show only checked topics (empty array = no bubbles if nothing checked)
+            updateChart(topicsToShow);
         }}
 
         function selectNode(nodeId) {{

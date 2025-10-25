@@ -31,15 +31,18 @@ from agents.agent_0.agent_results_loader import AgentResultsLoader
 from agents.agent_0.scoring import TopicScorer
 from agents.agent_0.dashboard import DashboardGenerator
 from agents.agent_0.queue_manager import QueueManager
+from agents.agent_0.drill_down_loader import DrillDownTrail
 
 
-def main(topics: List[str], method: str = "pytrends"):
+def main(topics: List[str], method: str = "pytrends", parent_topic: str = None, use_split_view: bool = False):
     """
     Main execution function for Agent 0
 
     Args:
         topics: List of topic strings to research
         method: Data collection method ("pytrends", "playwright", or "websearch")
+        parent_topic: Optional parent topic for drill-down mode (None for root level)
+        use_split_view: Use split-view dashboard with tree navigation
 
     Returns:
         Path to output JSON file
@@ -67,22 +70,26 @@ def main(topics: List[str], method: str = "pytrends"):
     # Initialize queue manager for rate limit tracking
     queue_manager = QueueManager(trail)
 
-    # Check batch safety
-    batch_check = queue_manager.can_process_batch(topics)
-    if not batch_check['safe']:
-        print(f"\n[!] WARNING: {batch_check['reason']}")
-        print("Recommendations:")
-        for rec in batch_check['recommendations']:
-            print(f"  - {rec}")
-
-        if batch_check['wait_seconds'] is not None and batch_check['wait_seconds'] > 0:
-            print(f"\n[*] Waiting {round(batch_check['wait_seconds'], 1)} seconds before proceeding...")
-            time.sleep(batch_check['wait_seconds'])
-        else:
-            proceed = input("\nProceed anyway? (y/n): ")
-            if proceed.lower() != 'y':
-                print("Aborted by user.")
-                return None
+    # OBSOLETE: Rate limit check commented out since we now use AI Agent research
+    # AI agents have no rate limits, and this check was blocking execution unnecessarily
+    # Uncomment if we ever switch back to Google Trends API
+    #
+    # # Check batch safety
+    # batch_check = queue_manager.can_process_batch(topics)
+    # if not batch_check['safe']:
+    #     print(f"\n[!] WARNING: {batch_check['reason']}")
+    #     print("Recommendations:")
+    #     for rec in batch_check['recommendations']:
+    #         print(f"  - {rec}")
+    #
+    #     if batch_check['wait_seconds'] is not None and batch_check['wait_seconds'] > 0:
+    #         print(f"\n[*] Waiting {round(batch_check['wait_seconds'], 1)} seconds before proceeding...")
+    #         time.sleep(batch_check['wait_seconds'])
+    #     else:
+    #         proceed = input("\nProceed anyway? (y/n): ")
+    #         if proceed.lower() != 'y':
+    #             print("Aborted by user.")
+    #             return None
 
     # Show batch estimate
     estimate = queue_manager.estimate_batch_time(topics)
@@ -198,14 +205,20 @@ def main(topics: List[str], method: str = "pytrends"):
             youtube_data
         )
 
-        # Store results
-        topic_data.append({
+        # Store results (include description if available from agent results)
+        topic_entry = {
             "topic": topic,
             "scores": scores,
             "trends_data": trends_data,
             "reddit_data": reddit_data,
             "youtube_data": youtube_data
-        })
+        }
+
+        # Add description from agent results if available
+        if topic in agent_results and 'description' in agent_results[topic]:
+            topic_entry['description'] = agent_results[topic]['description']
+
+        topic_data.append(topic_entry)
 
         print(f"  [OK] Composite Score: {scores['composite_score']:.2f} (Confidence: {scores['confidence']}%)")
 
@@ -229,9 +242,27 @@ def main(topics: List[str], method: str = "pytrends"):
     # Create output directory
     os.makedirs(Config.OUTPUT_DIR, exist_ok=True)
 
-    # Generate HTML dashboard (with queue manager for rate limit indicator)
-    html_path = dashboard_gen.generate_html(ranked_topics, Config.OUTPUT_HTML, queue_manager=queue_manager)
-    print(f"  [OK] HTML Dashboard: {html_path}")
+    # Initialize drill-down trail
+    drill_trail = DrillDownTrail(trail)
+
+    # Add this research session to trail
+    drill_trail.add_research_session(parent_topic, ranked_topics, Config.OUTPUT_JSON)
+
+    # Get tree data for dashboard
+    tree_data = drill_trail.get_tree_for_dashboard()
+
+    # Generate appropriate dashboard based on mode
+    if use_split_view or tree_data.get("root_nodes"):
+        # Use split-view if explicitly requested OR if we have drill-down history
+        trail.light(Config.LED_DRILL_DOWN_START + 13, {
+            "action": "generating_split_view_dashboard"
+        })
+        html_path = dashboard_gen.generate_split_view_html(ranked_topics, tree_data, Config.OUTPUT_HTML, queue_manager=queue_manager)
+        print(f"  [OK] Split-View Dashboard: {html_path}")
+    else:
+        # Use standard dashboard for first-time research
+        html_path = dashboard_gen.generate_html(ranked_topics, Config.OUTPUT_HTML, queue_manager=queue_manager)
+        print(f"  [OK] HTML Dashboard: {html_path}")
 
     # Generate JSON output
     json_path = dashboard_gen.generate_json_output(ranked_topics, Config.OUTPUT_JSON)
@@ -304,6 +335,9 @@ if __name__ == "__main__":
         sys.argv.pop(idx)  # Remove method value
 
     # Check for drill-down mode
+    parent_topic = None
+    use_split_view = False
+
     if "--drill-down" in sys.argv:
         idx = sys.argv.index("--drill-down")
         if idx + 1 >= len(sys.argv):
@@ -311,43 +345,98 @@ if __name__ == "__main__":
             print('Example: python agents/agent_0/main.py --drill-down "romance novels"')
             sys.exit(1)
 
-        primary_topic = sys.argv[idx + 1]
+        parent_topic = sys.argv[idx + 1]
+        use_split_view = True  # Always use split-view for drill-down
+
+        # Load existing trail to show breadcrumb path
+        temp_trail = BreadcrumbTrail("Agent0_DrillDown_Check")
+        drill_trail_checker = DrillDownTrail(temp_trail)
+
+        breadcrumb_path = drill_trail_checker.get_breadcrumb_path(parent_topic)
 
         print(f"\n{'='*60}")
-        print(f"DRILL-DOWN MODE: {primary_topic}")
+        print(f"DRILL-DOWN MODE")
         print(f"{'='*60}")
-        print(f"Generating top 10 in-demand subtopics using AI web research...")
-        print(f"This follows Grok's methodology: web search + social signals + composite scoring")
+
+        if breadcrumb_path:
+            print(f"[*] Current Path: {' -> '.join(breadcrumb_path)}")
+            print(f"[*] Drilling into: {parent_topic}")
+        else:
+            print(f"[!] Parent topic '{parent_topic}' not found in research history")
+            print(f"[*] Will treat as new root-level research")
+            parent_topic = None
+
         print(f"{'='*60}\n")
 
-        # Generate subtopics using Claude AI
-        from agents.agent_0.drill_down import DrillDownGenerator
+        print(f"[*] Step 1: Generate 10 Subtopics")
+        print(f"[*] Ask Claude (in your chat session) to generate subtopics:\n")
 
-        trail = BreadcrumbTrail("Agent0_DrillDown")
-        drill_down_gen = DrillDownGenerator(trail)
+        # Generate prompt for user to give to Claude
+        prompt = f'''Generate 10 specific, in-demand subtopics for "{parent_topic or sys.argv[idx + 1]}" suitable for ebooks.
 
-        subtopics = drill_down_gen.generate_subtopics(primary_topic, method="auto")
+Use web research to find trending angles for 2025. Focus on specific, actionable niches that follow Brian Moran's "Rule of One" - avoid broad terms.
 
-        if not subtopics:
-            print(f"\n[!] Failed to generate subtopics for '{primary_topic}'")
-            print(f"[!] Please ensure ANTHROPIC_API_KEY is set in your .env file")
-            print(f"[!] Or add patterns for this topic in drill_down.py")
+Research each subtopic and save results to cache/agent_results/ with these filenames:
+- {{parent_topic_snake_case}}_{{subtopic}}.json
+
+Return when all 10 are researched and cached.
+
+Examples of good subtopics:
+- "billionaire romance novels"
+- "guided meditation for sleep"
+- "meal prep for busy professionals"
+
+IMPORTANT: Make each subtopic specific enough to be searchable and distinct from others.'''
+
+        print(f"+{'-'*58}+")
+        for line in prompt.split('\n'):
+            print(f"| {line:<56} |")
+        print(f"+{'-'*58}+\n")
+
+        print(f"[*] After Claude completes research, provide the subtopic names below")
+        print(f"[*] (one per line, press Enter twice when done):\n")
+
+        # Get subtopics from user
+        topics = []
+        print(f"Enter subtopics (press Enter twice to finish):")
+        while True:
+            line = input(f"  {len(topics)+1}. ").strip()
+            if not line:
+                if topics:
+                    break
+                else:
+                    continue
+            topics.append(line)
+
+        if not topics:
+            print(f"\n[!] No subtopics provided. Exiting.")
             sys.exit(1)
 
-        print(f"\n{'='*60}")
-        print(f"Generated {len(subtopics)} Subtopics:")
-        print(f"{'='*60}")
-        for i, subtopic in enumerate(subtopics, 1):
-            print(f"  {i}. {subtopic}")
-        print(f"{'='*60}\n")
+        print(f"\n[OK] Received {len(topics)} subtopics")
+        print(f"[*] Starting research verification...\n")
 
-        # Now research all subtopics using normal Agent 0 flow
-        print(f"[*] Starting research on all {len(subtopics)} subtopics...")
-        print(f"[*] This will take approximately {len(subtopics) * 14 / 60:.1f} minutes\n")
-
-        topics = subtopics
     else:
-        # Normal mode
+        # Normal mode - check for --parent flag
+        parent_topic = None
+
+        if "--parent" in sys.argv:
+            idx = sys.argv.index("--parent")
+            if idx + 1 >= len(sys.argv):
+                print("[!] Error: --parent requires a topic name")
+                print('Example: python agents/agent_0/main.py --parent "meditation" "body scan" "chakra"')
+                sys.exit(1)
+
+            parent_topic = sys.argv[idx + 1]
+            use_split_view = True  # Use split-view when specifying parent
+
+            # Remove --parent and its value from argv
+            sys.argv.pop(idx)  # Remove --parent
+            sys.argv.pop(idx)  # Remove parent value
+
+            print(f"\n{'='*60}")
+            print(f"Adding subtopics under parent: {parent_topic}")
+            print(f"{'='*60}\n")
+
         topics = sys.argv[1:]
 
     # Limit to MAX_TOPICS
@@ -356,12 +445,14 @@ if __name__ == "__main__":
         topics = topics[:Config.MAX_TOPICS]
 
     # Run Agent 0
-    output_path = main(topics, method=method)
+    output_path = main(topics, method=method, parent_topic=parent_topic, use_split_view=use_split_view)
 
     if output_path:
         print(f"\n[OK] Agent 0 completed successfully!")
         print(f"[OK] Output: {output_path}")
         print(f"[OK] Method used: {method}")
+        if use_split_view:
+            print(f"[OK] Split-view dashboard generated with drill-down tree")
         sys.exit(0)
     else:
         print(f"\n[FAIL] Agent 0 failed - check logs for details")

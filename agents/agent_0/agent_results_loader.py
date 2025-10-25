@@ -34,6 +34,7 @@ class AgentResultsLoader:
     File format (JSON):
     {
         "keyword": "meditation",
+        "description": "A practice of focused attention and mindfulness...",
         "demand_score": 87,
         "confidence": 92,
         "signals": {
@@ -198,6 +199,9 @@ class AgentResultsLoader:
             for signal in required_signals:
                 if signal not in signals:
                     return False
+
+        # Description is optional but recommended
+        # (for backward compatibility with existing cache files)
 
         return True
 

@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agent 0 - Topic Research Dashboard (Split View)</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .split-container {
+            display: grid;
+            grid-template-columns: 40% 60%;
+            height: 100vh;
+            gap: 0;
+        }
+
+        /* LEFT PANEL - Tree Navigation */
+        .tree-panel {
+            background: white;
+            overflow-y: auto;
+            border-right: 3px solid #667eea;
+            box-shadow: 4px 0 12px rgba(0,0,0,0.1);
+        }
+
+        .tree-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .tree-header h2 {
+            margin: 0;
+            font-size: 20px;
+        }
+
+        .tree-header .subtitle {
+            font-size: 12px;
+            opacity: 0.9;
+            margin-top: 5px;
+        }
+
+        .tree-content {
+            padding: 20px;
+        }
+
+        .tree-node {
+            margin: 8px 0;
+            padding-left: 0;
+        }
+
+        .tree-node.level-1 { padding-left: 20px; }
+        .tree-node.level-2 { padding-left: 40px; }
+        .tree-node.level-3 { padding-left: 60px; }
+
+        .node-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 15px;
+            background: #f9f9f9;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border-left: 4px solid #e0e0e0;
+            margin-bottom: 8px;
+        }
+
+        .node-checkbox {
+            margin-right: 10px;
+            cursor: pointer;
+            width: 18px;
+            height: 18px;
+            flex-shrink: 0;
+        }
+
+        .node-item:hover {
+            background: #e3f2fd;
+            border-left-color: #2196F3;
+            transform: translateX(4px);
+        }
+
+        .node-item.selected {
+            background: linear-gradient(135deg, #e8eaf6 0%, #c5cae9 100%);
+            border-left-color: #667eea;
+            font-weight: 600;
+        }
+
+        .node-item.gold-mine { border-left-color: #4CAF50; }
+        .node-item.viable { border-left-color: #2196F3; }
+        .node-item.risky { border-left-color: #FF9800; }
+        .node-item.avoid { border-left-color: #f44336; }
+
+        .node-icon {
+            margin-right: 10px;
+            font-size: 16px;
+        }
+
+        .node-text {
+            flex: 1;
+            font-size: 14px;
+        }
+
+        .node-score {
+            font-weight: bold;
+            font-size: 13px;
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
+
+        .node-score.gold-mine { background: #C8E6C9; color: #2E7D32; }
+        .node-score.viable { background: #BBDEFB; color: #1565C0; }
+        .node-score.risky { background: #FFE0B2; color: #E65100; }
+        .node-score.avoid { background: #FFCDD2; color: #C62828; }
+
+        .toggle-btn {
+            cursor: pointer;
+            margin-right: 8px;
+            font-size: 12px;
+            color: #666;
+            user-select: none;
+        }
+
+        .tree-children {
+            display: none;
+        }
+
+        .tree-children.expanded {
+            display: block;
+        }
+
+        /* RIGHT PANEL - Chart */
+        .chart-panel {
+            background: white;
+            overflow-y: auto;
+        }
+
+        .chart-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .chart-header h2 {
+            margin: 0;
+            font-size: 20px;
+        }
+
+        .chart-header .subtitle {
+            font-size: 12px;
+            opacity: 0.9;
+            margin-top: 5px;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 700px;
+            margin: 20px;
+            background: #fafafa;
+            border-radius: 8px;
+            padding: 15px;
+        }
+
+        .info-popup {
+            display: none;
+            position: fixed;
+            background: white;
+            border: 2px solid #667eea;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+            max-width: 700px;
+            max-height: 85vh;
+            z-index: 1000;
+        }
+
+        .info-popup.active {
+            display: block;
+        }
+
+        .info-popup h3 {
+            margin: 0 0 15px 0;
+            color: #667eea;
+        }
+
+        .info-popup .close-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            cursor: pointer;
+            font-size: 24px;
+            color: #999;
+        }
+
+        .info-popup .close-btn:hover {
+            color: #333;
+        }
+
+        .info-section {
+            margin: 10px 0;
+            padding: 10px;
+            background: #f5f5f5;
+            border-radius: 4px;
+        }
+
+        .info-section strong {
+            color: #667eea;
+        }
+    </style>
+</head>
+<body>
+    <div class="split-container">
+        <!-- LEFT PANEL: Tree Navigation -->
+        <div class="tree-panel">
+            <div class="tree-header">
+                <h2>🌳 Topic Hierarchy</h2>
+                <div class="subtitle">Click to explore, expand to drill down</div>
+            </div>
+            <div class="tree-content">
+                
+            <div class="tree-node level-0">
+                <div class="node-item unknown" data-node-id="meditation_2025-10-24T20:54:18.985100">
+                    <input type="checkbox" id="check-meditation_2025-10-24T20:54:18.985100" class="node-checkbox" checked onchange="toggleTopicSelection('meditation_2025-10-24T20:54:18.985100')" onclick="event.stopPropagation()">
+                    <span class="toggle-btn" id="toggle-meditation_2025-10-24T20:54:18.985100" onclick="event.stopPropagation(); toggleChildren('meditation_2025-10-24T20:54:18.985100')">▼</span>
+                    <span class="node-icon" onclick="selectNode('meditation_2025-10-24T20:54:18.985100')">🎯</span>
+                    <span class="node-text" onclick="selectNode('meditation_2025-10-24T20:54:18.985100')">meditation</span>
+                    <span class="node-score unknown" onclick="selectNode('meditation_2025-10-24T20:54:18.985100')">98.5</span>
+                </div>
+            
+                <div class="tree-children expanded" id="children-meditation_2025-10-24T20:54:18.985100">
+                    
+            <div class="tree-node level-1">
+                <div class="node-item unknown" data-node-id="walking_meditation_2025-10-24T20:57:04.121101">
+                    <input type="checkbox" id="check-walking_meditation_2025-10-24T20:57:04.121101" class="node-checkbox" checked onchange="toggleTopicSelection('walking_meditation_2025-10-24T20:57:04.121101')" onclick="event.stopPropagation()">
+                    
+                    <span class="node-icon" onclick="event.stopPropagation(); showTopicSummary('walking_meditation_2025-10-24T20:57:04.121101')">📄</span>
+                    <span class="node-text" onclick="selectNode('walking_meditation_2025-10-24T20:57:04.121101')">walking meditation</span>
+                    <span class="node-score unknown" onclick="selectNode('walking_meditation_2025-10-24T20:57:04.121101')">95.8</span>
+                </div>
+            </div>
+
+            <div class="tree-node level-1">
+                <div class="node-item unknown" data-node-id="loving_kindness_meditation_2025-10-24T20:57:04.121101">
+                    <input type="checkbox" id="check-loving_kindness_meditation_2025-10-24T20:57:04.121101" class="node-checkbox" checked onchange="toggleTopicSelection('loving_kindness_meditation_2025-10-24T20:57:04.121101')" onclick="event.stopPropagation()">
+                    
+                    <span class="node-icon" onclick="event.stopPropagation(); showTopicSummary('loving_kindness_meditation_2025-10-24T20:57:04.121101')">📄</span>
+                    <span class="node-text" onclick="selectNode('loving_kindness_meditation_2025-10-24T20:57:04.121101')">loving kindness meditation</span>
+                    <span class="node-score unknown" onclick="selectNode('loving_kindness_meditation_2025-10-24T20:57:04.121101')">93.5</span>
+                </div>
+            </div>
+
+            <div class="tree-node level-1">
+                <div class="node-item unknown" data-node-id="mindfulness_meditation_2025-10-24T20:57:04.121101">
+                    <input type="checkbox" id="check-mindfulness_meditation_2025-10-24T20:57:04.121101" class="node-checkbox" checked onchange="toggleTopicSelection('mindfulness_meditation_2025-10-24T20:57:04.121101')" onclick="event.stopPropagation()">
+                    
+                    <span class="node-icon" onclick="event.stopPropagation(); showTopicSummary('mindfulness_meditation_2025-10-24T20:57:04.121101')">📄</span>
+                    <span class="node-text" onclick="selectNode('mindfulness_meditation_2025-10-24T20:57:04.121101')">mindfulness meditation</span>
+                    <span class="node-score unknown" onclick="selectNode('mindfulness_meditation_2025-10-24T20:57:04.121101')">100.0</span>
+                </div>
+            </div>
+
+            <div class="tree-node level-1">
+                <div class="node-item unknown" data-node-id="transcendental_meditation_2025-10-24T20:57:04.121101">
+                    <input type="checkbox" id="check-transcendental_meditation_2025-10-24T20:57:04.121101" class="node-checkbox" checked onchange="toggleTopicSelection('transcendental_meditation_2025-10-24T20:57:04.121101')" onclick="event.stopPropagation()">
+                    
+                    <span class="node-icon" onclick="event.stopPropagation(); showTopicSummary('transcendental_meditation_2025-10-24T20:57:04.121101')">📄</span>
+                    <span class="node-text" onclick="selectNode('transcendental_meditation_2025-10-24T20:57:04.121101')">transcendental meditation</span>
+                    <span class="node-score unknown" onclick="selectNode('transcendental_meditation_2025-10-24T20:57:04.121101')">95.0</span>
+                </div>
+            </div>
+
+            <div class="tree-node level-1">
+                <div class="node-item unknown" data-node-id="vipassana_meditation_2025-10-24T20:57:04.121101">
+                    <input type="checkbox" id="check-vipassana_meditation_2025-10-24T20:57:04.121101" class="node-checkbox" checked onchange="toggleTopicSelection('vipassana_meditation_2025-10-24T20:57:04.121101')" onclick="event.stopPropagation()">
+                    
+                    <span class="node-icon" onclick="event.stopPropagation(); showTopicSummary('vipassana_meditation_2025-10-24T20:57:04.121101')">📄</span>
+                    <span class="node-text" onclick="selectNode('vipassana_meditation_2025-10-24T20:57:04.121101')">vipassana meditation</span>
+                    <span class="node-score unknown" onclick="selectNode('vipassana_meditation_2025-10-24T20:57:04.121101')">93.1</span>
+                </div>
+            </div>
+
+            <div class="tree-node level-1">
+                <div class="node-item unknown" data-node-id="body_scan_meditation_2025-10-24T20:57:04.121101">
+                    <input type="checkbox" id="check-body_scan_meditation_2025-10-24T20:57:04.121101" class="node-checkbox" checked onchange="toggleTopicSelection('body_scan_meditation_2025-10-24T20:57:04.121101')" onclick="event.stopPropagation()">
+                    
+                    <span class="node-icon" onclick="event.stopPropagation(); showTopicSummary('body_scan_meditation_2025-10-24T20:57:04.121101')">📄</span>
+                    <span class="node-text" onclick="selectNode('body_scan_meditation_2025-10-24T20:57:04.121101')">body scan meditation</span>
+                    <span class="node-score unknown" onclick="selectNode('body_scan_meditation_2025-10-24T20:57:04.121101')">96.2</span>
+                </div>
+            </div>
+
+            <div class="tree-node level-1">
+                <div class="node-item unknown" data-node-id="guided_visualization_meditation_2025-10-24T20:57:04.121101">
+                    <input type="checkbox" id="check-guided_visualization_meditation_2025-10-24T20:57:04.121101" class="node-checkbox" checked onchange="toggleTopicSelection('guided_visualization_meditation_2025-10-24T20:57:04.121101')" onclick="event.stopPropagation()">
+                    
+                    <span class="node-icon" onclick="event.stopPropagation(); showTopicSummary('guided_visualization_meditation_2025-10-24T20:57:04.121101')">📄</span>
+                    <span class="node-text" onclick="selectNode('guided_visualization_meditation_2025-10-24T20:57:04.121101')">guided visualization meditation</span>
+                    <span class="node-score unknown" onclick="selectNode('guided_visualization_meditation_2025-10-24T20:57:04.121101')">97.7</span>
+                </div>
+            </div>
+
+            <div class="tree-node level-1">
+                <div class="node-item unknown" data-node-id="mantra_meditation_2025-10-24T20:57:04.121101">
+                    <input type="checkbox" id="check-mantra_meditation_2025-10-24T20:57:04.121101" class="node-checkbox" checked onchange="toggleTopicSelection('mantra_meditation_2025-10-24T20:57:04.121101')" onclick="event.stopPropagation()">
+                    
+                    <span class="node-icon" onclick="event.stopPropagation(); showTopicSummary('mantra_meditation_2025-10-24T20:57:04.121101')">📄</span>
+                    <span class="node-text" onclick="selectNode('mantra_meditation_2025-10-24T20:57:04.121101')">mantra meditation</span>
+                    <span class="node-score unknown" onclick="selectNode('mantra_meditation_2025-10-24T20:57:04.121101')">95.4</span>
+                </div>
+            </div>
+
+            <div class="tree-node level-1">
+                <div class="node-item unknown" data-node-id="zen_meditation_2025-10-24T20:57:04.121101">
+                    <input type="checkbox" id="check-zen_meditation_2025-10-24T20:57:04.121101" class="node-checkbox" checked onchange="toggleTopicSelection('zen_meditation_2025-10-24T20:57:04.121101')" onclick="event.stopPropagation()">
+                    
+                    <span class="node-icon" onclick="event.stopPropagation(); showTopicSummary('zen_meditation_2025-10-24T20:57:04.121101')">📄</span>
+                    <span class="node-text" onclick="selectNode('zen_meditation_2025-10-24T20:57:04.121101')">zen meditation</span>
+                    <span class="node-score unknown" onclick="selectNode('zen_meditation_2025-10-24T20:57:04.121101')">94.3</span>
+                </div>
+            </div>
+
+            <div class="tree-node level-1">
+                <div class="node-item unknown" data-node-id="chakra_meditation_2025-10-24T20:57:04.121101">
+                    <input type="checkbox" id="check-chakra_meditation_2025-10-24T20:57:04.121101" class="node-checkbox" checked onchange="toggleTopicSelection('chakra_meditation_2025-10-24T20:57:04.121101')" onclick="event.stopPropagation()">
+                    
+                    <span class="node-icon" onclick="event.stopPropagation(); showTopicSummary('chakra_meditation_2025-10-24T20:57:04.121101')">📄</span>
+                    <span class="node-text" onclick="selectNode('chakra_meditation_2025-10-24T20:57:04.121101')">chakra meditation</span>
+                    <span class="node-score unknown" onclick="selectNode('chakra_meditation_2025-10-24T20:57:04.121101')">94.6</span>
+                </div>
+            </div>
+                </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- RIGHT PANEL: Chart -->
+        <div class="chart-panel">
+            <div class="chart-header">
+                <h2>📊 Demand vs Competition</h2>
+                <div class="subtitle">Hover bubbles for details • Generated: 2025-10-25 01:28:57</div>
+            </div>
+            <div class="chart-container">
+                <canvas id="topicChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Info Popup -->
+    <div class="info-popup" id="infoPopup">
+        <span class="close-btn" onclick="closePopup()">&times;</span>
+        <div id="popupContent"></div>
+    </div>
+
+    <script>
+        // Data
+        const allTopics = [{"topic": "meditation", "scores": {"composite_score": 98.5, "trends_score": 95.7, "reddit_score": 100.0, "youtube_score": 100.0, "confidence": 100, "sources_with_data": 3, "competition": {"trends_competition": 80, "reddit_competition": 41.75, "youtube_competition": 45.0, "overall_competition": 55.58, "competition_level": "high", "competition_emoji": "\ud83d\udfe0", "competition_description": "HIGH"}, "opportunity": {"opportunity_score": 43.75, "recommendation": "risky", "recommendation_emoji": "\ud83d\udd35", "recommendation_description": "RISKY - Need strong differentiation", "risk_level": "HIGH", "complexity": "COMPLEX", "complexity_description": "Need unique angle or superior quality", "demand_score": 98.495, "competition_score": 55.58}, "insights": ["\u2705 Strong validated demand", "\u26a0\ufe0f High competition - strong positioning required", "\u2705 Content gap - high views, few videos!", "\u2705 Active community with pain points"], "audience_size": 129976475, "zone": "viable", "richness": {"richness_score": 100.0, "richness_stars": 5, "sources_count": 3, "breakdown": {"trends": {"richness": 100, "data_points": 94, "average_interest": 87}, "reddit": {"richness": 100, "total_posts": 50, "avg_engagement": 16809.04}, "youtube": {"richness": 100, "total_videos": 20, "avg_views": 6021801.15}}}, "recency": {"recency_score": 23.14, "recent_activity_pct": 8.6, "trend_momentum": "stable", "avg_content_age_days": 1116.6, "recent_30_days": 2, "recent_90_days": 6, "total_content": 70}}, "trends_data": {"average_interest": 87, "peak_interest": 87, "trend_direction": "stable", "data_points": 94, "source": "agent"}, "reddit_data": {"total_posts": 50, "total_engagement": 840452, "avg_engagement": 16809.04, "top_subreddits": [{"name": "Meditation", "count": 4}, {"name": "LifeProTips", "count": 3}, {"name": "science", "count": 3}, {"name": "pics", "count": 3}, {"name": "nextfuckinglevel", "count": 2}], "timestamps": [1756009189.0, 1759503390.0, 1527120269.0, 1728825985.0, 1649944633.0, 1609509476.0, 1750930020.0, 1760450915.0, 1734620364.0, 1708498512.0, 1731289652.0, 1712402347.0, 1747580786.0, 1740934797.0, 1751657704.0, 1736082121.0, 1756480855.0, 1757503176.0, 1654489305.0, 1745086977.0, 1665930582.0, 1692619292.0, 1736168260.0, 1637678140.0, 1610370521.0, 1517094117.0, 1752678293.0, 1565035635.0, 1740241488.0, 1717165919.0, 1563706608.0, 1460556688.0, 1655082661.0, 1685863919.0, 1587407013.0, 1733370812.0, 1750594929.0, 1575579129.0, 1664118830.0, 1519158645.0, 1589544631.0, 1758488765.0, 1740112441.0, 1752409591.0, 1707359996.0, 1608049483.0, 1751937122.0, 1642510208.0, 1681470705.0, 1549975277.0]}, "youtube_data": {"total_videos": 20, "total_views": 120436023, "avg_views": 6021801.15, "top_channels": [{"name": "Goodful", "count": 3}, {"name": "Sadhguru", "count": 2}, {"name": "Boho Beautiful Yoga", "count": 2}, {"name": "Yongey Mingyur Rinpoche", "count": 2}, {"name": "Jason Stephenson - Guided Sleep Meditation ", "count": 2}], "timestamps": [1740725506.0, 1609510118.0, 1567609207.0, 1686574821.0, 1730617140.0, 1299688047.0, 1585753215.0, 1715867096.0, 1569978900.0, 1753419241.0, 1736078442.0, 1597237202.0, 1698976831.0, 1444607576.0, 1646758801.0, 1748086204.0, 1472461200.0, 1726134060.0, 1678453233.0, 1603292403.0]}}, {"topic": "walking meditation", "scores": {"composite_score": 95.8, "trends_score": 88.0, "reddit_score": 100.0, "youtube_score": 100, "confidence": 100, "sources_with_data": 3, "competition": {"trends_competition": 70, "reddit_competition": 59.5, "youtube_competition": 25.0, "overall_competition": 51.5, "competition_level": "high", "competition_emoji": "\ud83d\udfe0", "competition_description": "HIGH"}, "opportunity": {"opportunity_score": 46.46, "recommendation": "viable", "recommendation_emoji": "\ud83d\udfe1", "recommendation_description": "VIABLE - Good opportunity with effort", "risk_level": "MODERATE", "complexity": "COMPLEX", "complexity_description": "Need unique angle or superior quality", "demand_score": 95.8, "competition_score": 51.5}, "insights": ["\u2705 Strong validated demand", "\u26a0\ufe0f High competition - strong positioning required", "\u2705 Content gap - high views, few videos!", "\u2705 Active community with pain points"], "audience_size": 10824824, "zone": "viable", "richness": {"richness_score": 67.11, "richness_stars": 3, "sources_count": 3, "breakdown": {"trends": {"richness": 100, "data_points": 78, "average_interest": 80}, "reddit": {"richness": 83.0, "total_posts": 50, "avg_engagement": 4857.96}, "youtube": {"richness": 18.3, "total_videos": 20, "avg_views": 129096.3}}}, "recency": {"recency_score": 30.86, "recent_activity_pct": 21.4, "trend_momentum": "stable", "avg_content_age_days": 732.8, "recent_30_days": 9, "recent_90_days": 15, "total_content": 70}}, "trends_data": {"average_interest": 80, "peak_interest": 80, "trend_direction": "stable", "data_points": 78, "source": "agent"}, "reddit_data": {"total_posts": 50, "total_engagement": 242898, "avg_engagement": 4857.96, "top_subreddits": [{"name": "BestofRedditorUpdates", "count": 7}, {"name": "Meditation", "count": 6}, {"name": "DrJoeDispenza", "count": 3}, {"name": "CozyPlaces", "count": 1}, {"name": "YouShouldKnow", "count": 1}], "timestamps": [1759599324.0, 1590436525.0, 1720825753.0, 1748313783.0, 1677755225.0, 1581367528.0, 1511279084.0, 1752791073.0, 1688911720.0, 1758914699.0, 1643703910.0, 1759159617.0, 1754300850.0, 1758805095.0, 1757365998.0, 1756960761.0, 1749268807.0, 1712526076.0, 1758805287.0, 1759003834.0, 1747800246.0, 1753269763.0, 1758805248.0, 1747522074.0, 1753400784.0, 1756009189.0, 1759761396.0, 1733502944.0, 1716109801.0, 1688146468.0, 1745866606.0, 1706363826.0, 1665482315.0, 1736244162.0, 1649770541.0, 1704204766.0, 1736744464.0, 1632830554.0, 1568679500.0, 1744043508.0, 1748465196.0, 1757801628.0, 1753400737.0, 1720584063.0, 1750982828.0, 1687113259.0, 1753456706.0, 1755356495.0, 1742265183.0, 1718510463.0]}, "youtube_data": {"total_videos": 20, "total_views": 2581926, "avg_views": 129096.3, "top_channels": [{"name": "Dr. Tracey Marks", "count": 2}, {"name": "Wildwood Mindfulness", "count": 2}, {"name": "Jim Brickman Music", "count": 1}, {"name": "AXA Global Healthcare", "count": 1}, {"name": "Yongey Mingyur Rinpoche", "count": 1}], "timestamps": [1438887722.0, 1742388302.0, 1562591596.0, 1635752012.0, 1721658744.0, 1631196001.0, 1680786002.0, 1761235391.0, 1689480003.0, 1678276818.0, 1589278866.0, 1206991300.0, 1709442010.0, 1687982264.0, 1709244428.0, 1731681030.0, 1692546369.0, 1612676472.0, 1742592756.0, 1745775011.0]}, "description": "Walking meditation is a mindfulness practice common in Buddhism that blends the physical experience of walking with focused meditative awareness. It involves paying close attention to the specific components of each step, coordinating breath with movement, and bringing mindfulness to an activity often done on autopilot, typically done at a slower pace than normal walking with eyes open and attention on the environment and bodily sensations."}, {"topic": "loving kindness meditation", "scores": {"composite_score": 93.49, "trends_score": 81.4, "reddit_score": 100.0, "youtube_score": 100, "confidence": 100, "sources_with_data": 3, "competition": {"trends_competition": 70, "reddit_competition": 59.5, "youtube_competition": 30.0, "overall_competition": 53.17, "competition_level": "high", "competition_emoji": "\ud83d\udfe0", "competition_description": "HIGH"}, "opportunity": {"opportunity_score": 43.78, "recommendation": "risky", "recommendation_emoji": "\ud83d\udd35", "recommendation_description": "RISKY - Need strong differentiation", "risk_level": "HIGH", "complexity": "COMPLEX", "complexity_description": "Need unique angle or superior quality", "demand_score": 93.49, "competition_score": 53.17}, "insights": ["\u2705 Strong validated demand", "\u26a0\ufe0f High competition - strong positioning required", "\u2705 Content gap - high views, few videos!", "\u2705 Active community with pain points"], "audience_size": 16713581, "zone": "viable", "richness": {"richness_score": 65.89, "richness_stars": 3, "sources_count": 3, "breakdown": {"trends": {"richness": 100, "data_points": 72, "average_interest": 74}, "reddit": {"richness": 53.0, "total_posts": 50, "avg_engagement": 2711.16}, "youtube": {"richness": 44.7, "total_videos": 20, "avg_views": 458901.15}}}, "recency": {"recency_score": 36.0, "recent_activity_pct": 30.0, "trend_momentum": "stable", "avg_content_age_days": 1008.3, "recent_30_days": 10, "recent_90_days": 21, "total_content": 70}}, "trends_data": {"average_interest": 74, "peak_interest": 74, "trend_direction": "stable", "data_points": 72, "source": "agent"}, "reddit_data": {"total_posts": 50, "total_engagement": 135558, "avg_engagement": 2711.16, "top_subreddits": [{"name": "Meditation", "count": 12}, {"name": "Buddhism", "count": 3}, {"name": "coolguides", "count": 2}, {"name": "science", "count": 1}, {"name": "mildlyinfuriating", "count": 1}], "timestamps": [1566682354.0, 1704885750.0, 1507042954.0, 1567712456.0, 1753456706.0, 1760726503.0, 1757768261.0, 1754846002.0, 1610606279.0, 1640869690.0, 1552836423.0, 1756389190.0, 1683214412.0, 1748858271.0, 1734934078.0, 1761151806.0, 1636392803.0, 1761152267.0, 1758911522.0, 1711599100.0, 1753481884.0, 1608003684.0, 1756752837.0, 1759647096.0, 1727024408.0, 1617969566.0, 1741974487.0, 1760652110.0, 1726337652.0, 1735706445.0, 1760741498.0, 1760618059.0, 1724346422.0, 1757703511.0, 1758911619.0, 1751293815.0, 1757221730.0, 1666937539.0, 1731994129.0, 1425146277.0, 1749663826.0, 1757151917.0, 1758067217.0, 1755520230.0, 1744895921.0, 1739670094.0, 1756445905.0, 1750188191.0, 1752096212.0, 1755195653.0]}, "youtube_data": {"total_videos": 20, "total_views": 9178023, "avg_views": 458901.15, "top_channels": [{"name": "Josh Wise | WiseMindBody", "count": 1}, {"name": "New Horizon Holistic Centre - Topic", "count": 1}, {"name": "Great Meditation", "count": 1}, {"name": "The Mindful Movement", "count": 1}, {"name": "Living Better", "count": 1}], "timestamps": [1455188701.0, 1512086360.0, 1627808431.0, 1563270585.0, 1438739179.0, 1438573719.0, 1551265823.0, 1761235390.0, 1324660774.0, 1664026211.0, 1629323173.0, 1640433603.0, 1610661145.0, 1629932409.0, 1623315616.0, 1606579201.0, 1743088748.0, 1733570102.0, 1516443019.0, 1595433609.0]}, "description": "Loving-kindness meditation, also known as metta meditation, is a Buddhist practice that cultivates unconditional kindness and benevolence toward all beings. It involves mentally sending goodwill, kindness, and warmth through silently repeating mantras, typically starting with oneself and extending to loved ones, neutral people, difficult people, and finally all beings everywhere."}, {"topic": "mindfulness meditation", "scores": {"composite_score": 100.0, "trends_score": 100.0, "reddit_score": 100.0, "youtube_score": 100.0, "confidence": 100, "sources_with_data": 3, "competition": {"trends_competition": 80, "reddit_competition": 51.5, "youtube_competition": 45.0, "overall_competition": 58.83, "competition_level": "high", "competition_emoji": "\ud83d\udfe0", "competition_description": "HIGH"}, "opportunity": {"opportunity_score": 41.17, "recommendation": "risky", "recommendation_emoji": "\ud83d\udd35", "recommendation_description": "RISKY - Need strong differentiation", "risk_level": "HIGH", "complexity": "COMPLEX", "complexity_description": "Need unique angle or superior quality", "demand_score": 100.0, "competition_score": 58.83}, "insights": ["\u2705 Strong validated demand", "\u26a0\ufe0f High competition - strong positioning required", "\u2705 Content gap - high views, few videos!", "\u2705 Active community with pain points"], "audience_size": 108790249, "zone": "viable", "richness": {"richness_score": 100.0, "richness_stars": 5, "sources_count": 3, "breakdown": {"trends": {"richness": 100, "data_points": 95, "average_interest": 92}, "reddit": {"richness": 100, "total_posts": 50, "avg_engagement": 6643.08}, "youtube": {"richness": 100, "total_videos": 20, "avg_views": 4962904.75}}}, "recency": {"recency_score": 22.29, "recent_activity_pct": 7.1, "trend_momentum": "stable", "avg_content_age_days": 1923.2, "recent_30_days": 1, "recent_90_days": 5, "total_content": 70}}, "trends_data": {"average_interest": 92, "peak_interest": 92, "trend_direction": "stable", "data_points": 95, "source": "agent"}, "reddit_data": {"total_posts": 50, "total_engagement": 332154, "avg_engagement": 6643.08, "top_subreddits": [{"name": "Meditation", "count": 15}, {"name": "science", "count": 15}, {"name": "todayilearned", "count": 2}, {"name": "woahdude", "count": 2}, {"name": "Healthygamergg", "count": 1}], "timestamps": [1693277117.0, 1590867684.0, 1649944633.0, 1643590642.0, 1736082121.0, 1611696814.0, 1566076518.0, 1563706608.0, 1654217859.0, 1575579129.0, 1589544631.0, 1430339983.0, 1748340461.0, 1424137205.0, 1418400936.0, 1754013914.0, 1387760689.0, 1579151947.0, 1757091690.0, 1694533862.0, 1585961131.0, 1725818326.0, 1431023391.0, 1398537567.0, 1612543798.0, 1544827198.0, 1657448003.0, 1572228270.0, 1597105049.0, 1622141098.0, 1674758490.0, 1754447383.0, 1613562387.0, 1746087983.0, 1525955238.0, 1608108436.0, 1530402818.0, 1526823785.0, 1728552814.0, 1678475203.0, 1295683637.0, 1736928636.0, 1627307642.0, 1619175136.0, 1740932581.0, 1663110230.0, 1599743996.0, 1734620364.0, 1507042954.0, 1756421877.0]}, "youtube_data": {"total_videos": 20, "total_views": 99258095, "avg_views": 4962904.75, "top_channels": [{"name": "Calm", "count": 5}, {"name": "The Mindful Movement", "count": 3}, {"name": "MindfulPeace", "count": 3}, {"name": "The Honest Guys - Meditations - Relaxation", "count": 2}, {"name": "Great Meditation", "count": 1}], "timestamps": [1472461200.0, 1427216400.0, 1475092924.0, 1615111216.0, 1563876005.0, 1665584703.0, 1473466084.0, 1761109206.0, 1465236871.0, 1550804828.0, 1496042535.0, 1540888386.0, 1576175615.0, 1515517205.0, 1474489256.0, 1539428404.0, 1669642214.0, 1585778414.0, 1744020900.0, 1567609207.0]}, "description": "Mindfulness meditation is the practice of maintaining moment-by-moment awareness of thoughts, feelings, bodily sensations, and the surrounding environment through a gentle, nurturing lens without judgment. It involves being fully present and aware of your current experience without overreacting or getting lost in thoughts."}, {"topic": "transcendental meditation", "scores": {"composite_score": 95.03, "trends_score": 85.8, "reddit_score": 100.0, "youtube_score": 100, "confidence": 100, "sources_with_data": 3, "competition": {"trends_competition": 70, "reddit_competition": 70.5, "youtube_competition": 30.0, "overall_competition": 56.83, "competition_level": "high", "competition_emoji": "\ud83d\udfe0", "competition_description": "HIGH"}, "opportunity": {"opportunity_score": 41.02, "recommendation": "risky", "recommendation_emoji": "\ud83d\udd35", "recommendation_description": "RISKY - Need strong differentiation", "risk_level": "HIGH", "complexity": "COMPLEX", "complexity_description": "Need unique angle or superior quality", "demand_score": 95.03, "competition_score": 56.83}, "insights": ["\u2705 Strong validated demand", "\u26a0\ufe0f High competition - strong positioning required", "\u2705 Content gap - high views, few videos!", "\u2705 Active community with pain points"], "audience_size": 23446242, "zone": "viable", "richness": {"richness_score": 70.01, "richness_stars": 4, "sources_count": 3, "breakdown": {"trends": {"richness": 100, "data_points": 75, "average_interest": 78}, "reddit": {"richness": 39.8, "total_posts": 50, "avg_engagement": 1771.34}, "youtube": {"richness": 70.2, "total_videos": 20, "avg_views": 777883.75}}}, "recency": {"recency_score": 24.0, "recent_activity_pct": 10.0, "trend_momentum": "stable", "avg_content_age_days": 1267.7, "recent_30_days": 1, "recent_90_days": 7, "total_content": 70}}, "trends_data": {"average_interest": 78, "peak_interest": 78, "trend_direction": "stable", "data_points": 75, "source": "agent"}, "reddit_data": {"total_posts": 50, "total_engagement": 88567, "avg_engagement": 1771.34, "top_subreddits": [{"name": "Meditation", "count": 16}, {"name": "transcendental", "count": 6}, {"name": "psychology", "count": 3}, {"name": "aliens", "count": 2}, {"name": "thebeachboys", "count": 2}], "timestamps": [1756961292.0, 1646340172.0, 1722683683.0, 1408641570.0, 1524526776.0, 1710800517.0, 1563711740.0, 1751361776.0, 1644804893.0, 1626631639.0, 1745397044.0, 1532836171.0, 1759861969.0, 1750337462.0, 1741732669.0, 1711492116.0, 1741752189.0, 1687226613.0, 1755616321.0, 1582324754.0, 1720525473.0, 1747883892.0, 1748291860.0, 1751589216.0, 1751297112.0, 1744216714.0, 1737559346.0, 1757003404.0, 1733397720.0, 1682803029.0, 1722869874.0, 1712343326.0, 1757432918.0, 1748309344.0, 1710636190.0, 1706063366.0, 1757423780.0, 1685576983.0, 1726096428.0, 1661520719.0, 1744482335.0, 1723532511.0, 1745802389.0, 1542367863.0, 1423163068.0, 1741752338.0, 1740272973.0, 1755953594.0, 1736778756.0, 1717117277.0]}, "youtube_data": {"total_videos": 20, "total_views": 15557675, "avg_views": 777883.75, "top_channels": [{"name": "Transcendental Meditation", "count": 8}, {"name": "David Lynch Foundation", "count": 3}, {"name": "Maharishi International University", "count": 1}, {"name": "Tony Nader MD, PhD", "count": 1}, {"name": "CBS Sunday Morning", "count": 1}], "timestamps": [1238771558.0, 1591206301.0, 1391018818.0, 1737059379.0, 1683646207.0, 1581960713.0, 1305937938.0, 1250143177.0, 1396993664.0, 1423665574.0, 1703372545.0, 1610205310.0, 1734965329.0, 1543884891.0, 1690484401.0, 1656095411.0, 1388425135.0, 1466654313.0, 1717865841.0, 1716596179.0]}, "description": "Transcendental Meditation (TM) is a form of silent meditation developed by Maharishi Mahesh Yogi that involves the silent repetition of a mantra or sound for 15-20 minutes twice per day. It is a technique for avoiding distracting thoughts and promoting a state of relaxed awareness, with the goal of transcending to a state of pure awareness beyond the personal self."}, {"topic": "vipassana meditation", "scores": {"composite_score": 93.11, "trends_score": 80.3, "reddit_score": 100.0, "youtube_score": 100, "confidence": 100, "sources_with_data": 3, "competition": {"trends_competition": 70, "reddit_competition": 71.5, "youtube_competition": 30.0, "overall_competition": 57.17, "competition_level": "high", "competition_emoji": "\ud83d\udfe0", "competition_description": "HIGH"}, "opportunity": {"opportunity_score": 39.88, "recommendation": "risky", "recommendation_emoji": "\ud83d\udd35", "recommendation_description": "RISKY - Need strong differentiation", "risk_level": "HIGH", "complexity": "COMPLEX", "complexity_description": "Need unique angle or superior quality", "demand_score": 93.105, "competition_score": 57.17}, "insights": ["\u2705 Strong validated demand", "\u26a0\ufe0f High competition - strong positioning required", "\u2705 Content gap - high views, few videos!"], "audience_size": 18579765, "zone": "viable", "richness": {"richness_score": 56.45, "richness_stars": 3, "sources_count": 3, "breakdown": {"trends": {"richness": 100, "data_points": 71, "average_interest": 73}, "reddit": {"richness": 16.2, "total_posts": 50, "avg_engagement": 88.12}, "youtube": {"richness": 53.1, "total_videos": 20, "avg_views": 563767.95}}}, "recency": {"recency_score": 38.57, "recent_activity_pct": 34.3, "trend_momentum": "stable", "avg_content_age_days": 726.2, "recent_30_days": 10, "recent_90_days": 24, "total_content": 70}}, "trends_data": {"average_interest": 73, "peak_interest": 73, "trend_direction": "stable", "data_points": 71, "source": "agent"}, "reddit_data": {"total_posts": 50, "total_engagement": 4406, "avg_engagement": 88.12, "top_subreddits": [{"name": "vipassana", "count": 16}, {"name": "Meditation", "count": 13}, {"name": "Buddhism", "count": 3}, {"name": "theravada", "count": 2}, {"name": "delhi", "count": 1}], "timestamps": [1738399594.0, 1628397257.0, 1748573878.0, 1389269175.0, 1691083087.0, 1759435980.0, 1757689367.0, 1757781161.0, 1733397720.0, 1375057689.0, 1690122512.0, 1745745682.0, 1760878919.0, 1761150865.0, 1726576676.0, 1754192459.0, 1759984761.0, 1751549530.0, 1760585322.0, 1752402344.0, 1744310959.0, 1745497798.0, 1758497278.0, 1754657534.0, 1751861648.0, 1729189100.0, 1756648510.0, 1758934887.0, 1722944410.0, 1761107915.0, 1737910010.0, 1751028446.0, 1756648832.0, 1755806094.0, 1755006069.0, 1751283646.0, 1757956884.0, 1757404327.0, 1738796323.0, 1756235667.0, 1757236745.0, 1752482296.0, 1735502985.0, 1759436100.0, 1758989088.0, 1710505454.0, 1749727241.0, 1759446898.0, 1753794051.0, 1750225786.0]}, "youtube_data": {"total_videos": 20, "total_views": 11275359, "avg_views": 563767.95, "top_channels": [{"name": "Can You Zen", "count": 8}, {"name": "Declutter The Mind", "count": 7}, {"name": "Vipassana Meditation", "count": 3}, {"name": "Eckhart Tolle", "count": 1}, {"name": "TEDx Talks", "count": 1}], "timestamps": [1687179605.0, 1655989207.0, 1604986803.0, 1694370611.0, 1604632503.0, 1695038401.0, 1632618008.0, 1605337443.0, 1614313430.0, 1604987319.0, 1668686439.0, 1690470031.0, 1629766801.0, 1414487258.0, 1654779634.0, 1728475208.0, 1687781704.0, 1655384412.0, 1457924756.0, 1384546002.0]}, "description": "Vipassana meditation, meaning 'to see things as they really are' or 'clear seeing,' is one of India's most ancient meditation techniques from the original teachings of the Buddha. It is an insight meditation practice that involves observing thoughts and emotions without judgment, developing clear awareness of exactly what is happening in the present moment through observing sensations throughout the body and developing equanimity."}, {"topic": "body scan meditation", "scores": {"composite_score": 96.19, "trends_score": 89.1, "reddit_score": 100.0, "youtube_score": 100, "confidence": 100, "sources_with_data": 3, "competition": {"trends_competition": 80, "reddit_competition": 71.5, "youtube_competition": 25.0, "overall_competition": 58.83, "competition_level": "high", "competition_emoji": "\ud83d\udfe0", "competition_description": "HIGH"}, "opportunity": {"opportunity_score": 39.6, "recommendation": "risky", "recommendation_emoji": "\ud83d\udd35", "recommendation_description": "RISKY - Need strong differentiation", "risk_level": "HIGH", "complexity": "COMPLEX", "complexity_description": "Need unique angle or superior quality", "demand_score": 96.185, "competition_score": 58.83}, "insights": ["\u2705 Strong validated demand", "\u26a0\ufe0f High competition - strong positioning required", "\u2705 Content gap - high views, few videos!"], "audience_size": 11750528, "zone": "viable", "richness": {"richness_score": 48.3, "richness_stars": 2, "sources_count": 3, "breakdown": {"trends": {"richness": 100, "data_points": 80, "average_interest": 81}, "reddit": {"richness": 22.4, "total_posts": 50, "avg_engagement": 528.54}, "youtube": {"richness": 22.5, "total_videos": 20, "avg_views": 181205.05}}}, "recency": {"recency_score": 24.0, "recent_activity_pct": 10.0, "trend_momentum": "stable", "avg_content_age_days": 632.8, "recent_30_days": 3, "recent_90_days": 7, "total_content": 70}}, "trends_data": {"average_interest": 81, "peak_interest": 81, "trend_direction": "stable", "data_points": 80, "source": "agent"}, "reddit_data": {"total_posts": 50, "total_engagement": 26427, "avg_engagement": 528.54, "top_subreddits": [{"name": "Meditation", "count": 14}, {"name": "TheMindIlluminated", "count": 6}, {"name": "vipassana", "count": 6}, {"name": "Mindfulness", "count": 3}, {"name": "streamentry", "count": 3}], "timestamps": [1656324546.0, 1598808940.0, 1716487952.0, 1737745859.0, 1751215790.0, 1747316569.0, 1729485848.0, 1723532511.0, 1751805888.0, 1729315669.0, 1754406509.0, 1752875541.0, 1756994798.0, 1761062114.0, 1758492214.0, 1590842564.0, 1759868520.0, 1752403401.0, 1734206706.0, 1758260224.0, 1748272706.0, 1569836679.0, 1747950412.0, 1741048993.0, 1715004598.0, 1751876975.0, 1742045175.0, 1739973196.0, 1743758553.0, 1746279009.0, 1736474150.0, 1737813837.0, 1746294701.0, 1738908585.0, 1748257640.0, 1744302724.0, 1742565575.0, 1717420593.0, 1742047948.0, 1736733589.0, 1741683689.0, 1740946852.0, 1745392537.0, 1732016343.0, 1725715030.0, 1736760300.0, 1743831423.0, 1743401393.0, 1670140307.0, 1742147036.0]}, "youtube_data": {"total_videos": 20, "total_views": 3624101, "avg_views": 181205.05, "top_channels": [{"name": "Dr. Adam Rosen- Knee Replacement & Orthopedic Info", "count": 2}, {"name": "Ally Boothroyd | Sarovara Yoga", "count": 2}, {"name": "Mount Sinai Health System", "count": 1}, {"name": "Therapy in a Nutshell", "count": 1}, {"name": "American College of Surgeons", "count": 1}], "timestamps": [1412095362.0, 1697754403.0, 1705046403.0, 1559822400.0, 1650299452.0, 1702482710.0, 1698775464.0, 1643643199.0, 1761113701.0, 1673704811.0, 1687337055.0, 1664359224.0, 1665524240.0, 1620824432.0, 1667574595.0, 1447524348.0, 1692719351.0, 1736533416.0, 1685980074.0, 1614389227.0]}, "description": "Body scan meditation is a mindfulness practice that involves systematically focusing attention on different parts of the body from head to toe (or feet to head) to notice physical sensations without judgment. The purpose is to reconnect with your physical self, tune into bodily sensations, and promote greater awareness of tension, pain, or anything out of the ordinary."}, {"topic": "guided visualization meditation", "scores": {"composite_score": 97.72, "trends_score": 93.5, "reddit_score": 100.0, "youtube_score": 100, "confidence": 100, "sources_with_data": 3, "competition": {"trends_competition": 80, "reddit_competition": 71.5, "youtube_competition": 30.0, "overall_competition": 60.5, "competition_level": "high", "competition_emoji": "\ud83d\udfe0", "competition_description": "HIGH"}, "opportunity": {"opportunity_score": 38.6, "recommendation": "risky", "recommendation_emoji": "\ud83d\udd35", "recommendation_description": "RISKY - Need strong differentiation", "risk_level": "HIGH", "complexity": "COMPLEX", "complexity_description": "Need unique angle or superior quality", "demand_score": 97.725, "competition_score": 60.5}, "insights": ["\u2705 Strong validated demand", "\u26a0\ufe0f High competition - strong positioning required", "\u2705 Content gap - high views, few videos!"], "audience_size": 27683663, "zone": "viable", "richness": {"richness_score": 68.87, "richness_stars": 3, "sources_count": 3, "breakdown": {"trends": {"richness": 100, "data_points": 84, "average_interest": 85}, "reddit": {"richness": 22.0, "total_posts": 50, "avg_engagement": 498.26}, "youtube": {"richness": 84.6, "total_videos": 20, "avg_views": 957937.5}}}, "recency": {"recency_score": 43.71, "recent_activity_pct": 42.9, "trend_momentum": "stable", "avg_content_age_days": 862.4, "recent_30_days": 14, "recent_90_days": 30, "total_content": 70}}, "trends_data": {"average_interest": 85, "peak_interest": 85, "trend_direction": "stable", "data_points": 84, "source": "agent"}, "reddit_data": {"total_posts": 50, "total_engagement": 24913, "avg_engagement": 498.26, "top_subreddits": [{"name": "tarotjourneys", "count": 7}, {"name": "Meditation", "count": 5}, {"name": "audiomeditation", "count": 3}, {"name": "realityshifting", "count": 2}, {"name": "enlightenment", "count": 2}], "timestamps": [1515346962.0, 1761289350.0, 1757016846.0, 1741379524.0, 1757292633.0, 1760054046.0, 1755715763.0, 1757423857.0, 1517759539.0, 1760003058.0, 1737836845.0, 1617969566.0, 1759554938.0, 1759065429.0, 1739583475.0, 1761030022.0, 1760658323.0, 1760658591.0, 1760658284.0, 1760658235.0, 1759950779.0, 1760658525.0, 1753121397.0, 1758045027.0, 1758870245.0, 1757171817.0, 1381244349.0, 1739691751.0, 1757567575.0, 1637968925.0, 1757116847.0, 1756512069.0, 1753949923.0, 1755907233.0, 1750794997.0, 1755302446.0, 1754697653.0, 1735688866.0, 1754500681.0, 1751586372.0, 1748597709.0, 1754092845.0, 1753949798.0, 1738894629.0, 1742038467.0, 1753488050.0, 1752537126.0, 1738354456.0, 1753162623.0, 1730559760.0]}, "youtube_data": {"total_videos": 20, "total_views": 19158750, "avg_views": 957937.5, "top_channels": [{"name": "Jason Stephenson - Guided Sleep Meditation ", "count": 5}, {"name": "Great Meditation", "count": 3}, {"name": "Dr. Jennifer Andrews (Dr. Jen)", "count": 2}, {"name": "City of Hope", "count": 1}, {"name": "Generation Calm", "count": 1}], "timestamps": [1418863740.0, 1659456902.0, 1434393000.0, 1571767202.0, 1624358022.0, 1391220603.0, 1633021721.0, 1761204606.0, 1625806811.0, 1708336818.0, 1620413331.0, 1586563707.0, 1444607576.0, 1702262724.0, 1709722845.0, 1688461212.0, 1487479464.0, 1431369001.0, 1584147434.0, 1439240401.0]}, "description": "Guided visualization meditation, also known as guided imagery, is a relaxation technique where practitioners use their senses and imagination to visualize positive, peaceful settings or outcomes to help settle the mind and body. It involves constructing an immersed state throughout the body by visualizing all five senses, typically with someone guiding the experience by describing a scene or story slowly and gently."}, {"topic": "mantra meditation", "scores": {"composite_score": 95.41, "trends_score": 86.9, "reddit_score": 100.0, "youtube_score": 100.0, "confidence": 100, "sources_with_data": 3, "competition": {"trends_competition": 70, "reddit_competition": 71.5, "youtube_competition": 45.0, "overall_competition": 62.17, "competition_level": "high", "competition_emoji": "\ud83d\udfe0", "competition_description": "HIGH"}, "opportunity": {"opportunity_score": 36.1, "recommendation": "risky", "recommendation_emoji": "\ud83d\udd35", "recommendation_description": "RISKY - Need strong differentiation", "risk_level": "HIGH", "complexity": "COMPLEX", "complexity_description": "Need unique angle or superior quality", "demand_score": 95.41499999999999, "competition_score": 62.17}, "insights": ["\u2705 Strong validated demand", "\u26a0\ufe0f High competition - strong positioning required", "\u2705 Content gap - high views, few videos!"], "audience_size": 135126096, "zone": "viable", "richness": {"richness_score": 75.92, "richness_stars": 4, "sources_count": 3, "breakdown": {"trends": {"richness": 100, "data_points": 77, "average_interest": 79}, "reddit": {"richness": 27.8, "total_posts": 50, "avg_engagement": 912.12}, "youtube": {"richness": 100, "total_videos": 20, "avg_views": 6359024.5}}}, "recency": {"recency_score": 37.71, "recent_activity_pct": 32.9, "trend_momentum": "stable", "avg_content_age_days": 995.8, "recent_30_days": 11, "recent_90_days": 23, "total_content": 70}}, "trends_data": {"average_interest": 79, "peak_interest": 79, "trend_direction": "stable", "data_points": 77, "source": "agent"}, "reddit_data": {"total_posts": 50, "total_engagement": 45606, "avg_engagement": 912.12, "top_subreddits": [{"name": "Meditation", "count": 14}, {"name": "Tantrasadhaks", "count": 3}, {"name": "hinduism", "count": 2}, {"name": "Ex_ArtOfLiving", "count": 2}, {"name": "Buddhism", "count": 2}], "timestamps": [1525623647.0, 1740029699.0, 1646854013.0, 1443103971.0, 1675550802.0, 1749071842.0, 1556709747.0, 1614689977.0, 1637468719.0, 1753456706.0, 1736152740.0, 1609509476.0, 1759181903.0, 1682803029.0, 1756526904.0, 1752330413.0, 1737836845.0, 1759922582.0, 1760938251.0, 1741164050.0, 1755916278.0, 1759583599.0, 1760665260.0, 1761317576.0, 1757279450.0, 1736152864.0, 1760329515.0, 1758709058.0, 1759948688.0, 1759127274.0, 1545837959.0, 1657725957.0, 1759217157.0, 1718172464.0, 1743375983.0, 1755466956.0, 1754875524.0, 1755587399.0, 1756375015.0, 1741210715.0, 1756276025.0, 1745005289.0, 1756029907.0, 1738773025.0, 1752400947.0, 1755280650.0, 1752898340.0, 1755173079.0, 1737820450.0, 1503084012.0]}, "youtube_data": {"total_videos": 20, "total_views": 127180490, "avg_views": 6359024.5, "top_channels": [{"name": "Meditative Mind", "count": 11}, {"name": "Hands-On Meditation", "count": 2}, {"name": "Rekha Malhotra English", "count": 1}, {"name": "Chantress Seba", "count": 1}, {"name": "MPK Fitness Classes", "count": 1}], "timestamps": [1580069805.0, 1469382390.0, 1437057884.0, 1676747304.0, 1712935086.0, 1738712117.0, 1499254412.0, 1522254615.0, 1761221356.0, 1457007047.0, 1583230409.0, 1491065921.0, 1524928537.0, 1470938402.0, 1737808500.0, 1539156185.0, 1522754317.0, 1530621635.0, 1717869340.0, 1651133951.0]}, "description": "Mantra meditation is the process of quieting and focusing the mind using a syllable, word, or phrase (called a mantra) that is repeated either aloud, chanted, whispered, or silently in the mind. The word mantra comes from Sanskrit roots 'man' (mind) and 'trai' (to protect or free), making mantras tools of the mind that help prevent wandering thoughts and anchor awareness in the present moment."}, {"topic": "zen meditation", "scores": {"composite_score": 94.26, "trends_score": 83.6, "reddit_score": 100.0, "youtube_score": 100.0, "confidence": 100, "sources_with_data": 3, "competition": {"trends_competition": 70, "reddit_competition": 70.5, "youtube_competition": 45.0, "overall_competition": 61.83, "competition_level": "high", "competition_emoji": "\ud83d\udfe0", "competition_description": "HIGH"}, "opportunity": {"opportunity_score": 35.98, "recommendation": "risky", "recommendation_emoji": "\ud83d\udd35", "recommendation_description": "RISKY - Need strong differentiation", "risk_level": "HIGH", "complexity": "COMPLEX", "complexity_description": "Need unique angle or superior quality", "demand_score": 94.26, "competition_score": 61.83}, "insights": ["\u2705 Strong validated demand", "\u26a0\ufe0f High competition - strong positioning required", "\u2705 Content gap - high views, few videos!", "\u2705 Active community with pain points"], "audience_size": 80865947, "zone": "viable", "richness": {"richness_score": 79.15, "richness_stars": 4, "sources_count": 3, "breakdown": {"trends": {"richness": 100, "data_points": 74, "average_interest": 76}, "reddit": {"richness": 37.5, "total_posts": 50, "avg_engagement": 1604.42}, "youtube": {"richness": 100, "total_videos": 20, "avg_views": 3659286.3}}}, "recency": {"recency_score": 30.0, "recent_activity_pct": 20.0, "trend_momentum": "stable", "avg_content_age_days": 1075.7, "recent_30_days": 2, "recent_90_days": 14, "total_content": 70}}, "trends_data": {"average_interest": 76, "peak_interest": 76, "trend_direction": "stable", "data_points": 74, "source": "agent"}, "reddit_data": {"total_posts": 50, "total_engagement": 80221, "avg_engagement": 1604.42, "top_subreddits": [{"name": "zen", "count": 15}, {"name": "Meditation", "count": 8}, {"name": "zenbuddhism", "count": 2}, {"name": "Overwatch", "count": 2}, {"name": "LowSodiumCyberpunk", "count": 1}], "timestamps": [1704154591.0, 1695147315.0, 1736168260.0, 1666129368.0, 1551936113.0, 1759209877.0, 1622141098.0, 1757505706.0, 1576350101.0, 1738518543.0, 1757416853.0, 1756009189.0, 1738402045.0, 1751289945.0, 1725187051.0, 1736865257.0, 1756009363.0, 1578926927.0, 1712591927.0, 1742572582.0, 1734888751.0, 1643487997.0, 1754683724.0, 1740283200.0, 1629686611.0, 1743029609.0, 1756053318.0, 1744922769.0, 1750809622.0, 1735654495.0, 1742392315.0, 1693142659.0, 1754666829.0, 1620606259.0, 1736101513.0, 1738402066.0, 1463412763.0, 1396905376.0, 1705651878.0, 1751546261.0, 1756526904.0, 1758464879.0, 1608851610.0, 1450896747.0, 1725901955.0, 1749502377.0, 1755464127.0, 1544962225.0, 1712859300.0, 1755717290.0]}, "youtube_data": {"total_videos": 20, "total_views": 73185726, "avg_views": 3659286.3, "top_channels": [{"name": "Yellow Brick Cinema - Relaxing Music", "count": 5}, {"name": "Tim Ferriss", "count": 2}, {"name": "Christoph Magnussen", "count": 2}, {"name": "Soothing Relaxation", "count": 2}, {"name": "The Sound of Inner Peace", "count": 1}], "timestamps": [1528480803.0, 1737384404.0, 1758758392.0, 1724142020.0, 1490523463.0, 1568134667.0, 1689271202.0, 1736794441.0, 1761314407.0, 1621647901.0, 1618864021.0, 1612447210.0, 1698066003.0, 1616521537.0, 1592413205.0, 1438624721.0, 1317678652.0, 1455819088.0, 1705525094.0, 1399146953.0]}, "description": "Zen meditation, or zazen (meaning 'sitting meditation' in Japanese), is a meditative discipline at the heart of Zen Buddhist practice that involves sitting with an erect spine, crossed legs, and folded hands while suspending all judgmental thinking. The practice focuses on 'just sitting' or shikantaza, allowing words, ideas, and thoughts to pass by without getting involved in them, with the aim of giving insight into one's true nature."}, {"topic": "chakra meditation", "scores": {"composite_score": 94.64, "trends_score": 84.7, "reddit_score": 100.0, "youtube_score": 100.0, "confidence": 100, "sources_with_data": 3, "competition": {"trends_competition": 70, "reddit_competition": 71.5, "youtube_competition": 45.0, "overall_competition": 62.17, "competition_level": "high", "competition_emoji": "\ud83d\udfe0", "competition_description": "HIGH"}, "opportunity": {"opportunity_score": 35.8, "recommendation": "risky", "recommendation_emoji": "\ud83d\udd35", "recommendation_description": "RISKY - Need strong differentiation", "risk_level": "HIGH", "complexity": "COMPLEX", "complexity_description": "Need unique angle or superior quality", "demand_score": 94.645, "competition_score": 62.17}, "insights": ["\u2705 Strong validated demand", "\u26a0\ufe0f High competition - strong positioning required", "\u2705 Content gap - high views, few videos!"], "audience_size": 100432532, "zone": "viable", "richness": {"richness_score": 76.17, "richness_stars": 4, "sources_count": 3, "breakdown": {"trends": {"richness": 100, "data_points": 75, "average_interest": 77}, "reddit": {"richness": 28.5, "total_posts": 50, "avg_engagement": 964.06}, "youtube": {"richness": 100, "total_videos": 20, "avg_views": 4634216.45}}}, "recency": {"recency_score": 48.0, "recent_activity_pct": 50.0, "trend_momentum": "stable", "avg_content_age_days": 736.8, "recent_30_days": 9, "recent_90_days": 35, "total_content": 70}}, "trends_data": {"average_interest": 77, "peak_interest": 77, "trend_direction": "stable", "data_points": 75, "source": "agent"}, "reddit_data": {"total_posts": 50, "total_engagement": 48203, "avg_engagement": 964.06, "top_subreddits": [{"name": "Meditation", "count": 7}, {"name": "Chakras", "count": 4}, {"name": "KalMantra", "count": 3}, {"name": "energy_work", "count": 2}, {"name": "gatewaytapes", "count": 2}], "timestamps": [1609021555.0, 1756061678.0, 1735401796.0, 1734011557.0, 1759243465.0, 1675400915.0, 1744776387.0, 1719041308.0, 1755967958.0, 1753987460.0, 1756362387.0, 1731639362.0, 1759007265.0, 1757945455.0, 1755570615.0, 1761226695.0, 1584370803.0, 1759733971.0, 1756235667.0, 1756265022.0, 1758162780.0, 1756766531.0, 1757994974.0, 1748933429.0, 1758896146.0, 1758838045.0, 1753556709.0, 1757945546.0, 1757651589.0, 1758953965.0, 1758870245.0, 1758264292.0, 1474212473.0, 1754875524.0, 1757229395.0, 1756452795.0, 1757108104.0, 1756887916.0, 1753910940.0, 1742540474.0, 1756073272.0, 1756029907.0, 1679894086.0, 1755225948.0, 1733281858.0, 1754984999.0, 1754028823.0, 1721140692.0, 1754774356.0, 1748469338.0]}, "youtube_data": {"total_videos": 20, "total_views": 92684329, "avg_views": 4634216.45, "top_channels": [{"name": "Great Meditation", "count": 5}, {"name": "Jason Stephenson - Guided Sleep Meditation ", "count": 3}, {"name": "Nu Meditation Music", "count": 2}, {"name": "Michael Sealey", "count": 1}, {"name": "Yoga with Kassandra", "count": 1}], "timestamps": [1674468009.0, 1435602600.0, 1683018011.0, 1705485628.0, 1416719533.0, 1593511214.0, 1479229205.0, 1712935086.0, 1761206437.0, 1612145700.0, 1606730443.0, 1548545703.0, 1726923645.0, 1566219615.0, 1629363632.0, 1424970277.0, 1684442125.0, 1464921001.0, 1659369987.0, 1580048133.0]}, "description": "Chakra meditation is a mindfulness practice that focuses on the seven main energy centers (chakras) located along the spine from the base to the top of the head, each corresponding to specific physical, emotional, and spiritual aspects of being. The practice involves deep concentration, breathing exercises, visualization, affirmations, mudras, and mantras to activate, open, and balance these energy vortices in the subtle body."}];
+        const treeData = {"version": "1.0", "created": "2025-10-24T20:54:18.985100", "last_updated": "2025-10-25T01:28:57.317520", "root_nodes": [{"id": "meditation_2025-10-24T20:54:18.985100", "topic": "meditation", "score": 98.5, "level": 0, "researched_at": "2025-10-25T01:28:57.316518", "output_file": "outputs\\topic-selection.json", "data": {"topic": "meditation", "scores": {"composite_score": 98.5, "trends_score": 95.7, "reddit_score": 100.0, "youtube_score": 100.0, "confidence": 100, "sources_with_data": 3, "competition": {"trends_competition": 80, "reddit_competition": 41.75, "youtube_competition": 45.0, "overall_competition": 55.58, "competition_level": "high", "competition_emoji": "\ud83d\udfe0", "competition_description": "HIGH"}, "opportunity": {"opportunity_score": 43.75, "recommendation": "risky", "recommendation_emoji": "\ud83d\udd35", "recommendation_description": "RISKY - Need strong differentiation", "risk_level": "HIGH", "complexity": "COMPLEX", "complexity_description": "Need unique angle or superior quality", "demand_score": 98.495, "competition_score": 55.58}, "insights": ["\u2705 Strong validated demand", "\u26a0\ufe0f High competition - strong positioning required", "\u2705 Content gap - high views, few videos!", "\u2705 Active community with pain points"], "audience_size": 129976475, "zone": "viable", "richness": {"richness_score": 100.0, "richness_stars": 5, "sources_count": 3, "breakdown": {"trends": {"richness": 100, "data_points": 94, "average_interest": 87}, "reddit": {"richness": 100, "total_posts": 50, "avg_engagement": 16809.04}, "youtube": {"richness": 100, "total_videos": 20, "avg_views": 6021801.15}}}, "recency": {"recency_score": 23.14, "recent_activity_pct": 8.6, "trend_momentum": "stable", "avg_content_age_days": 1116.6, "recent_30_days": 2, "recent_90_days": 6, "total_content": 70}}, "trends_data": {"average_interest": 87, "peak_interest": 87, "trend_direction": "stable", "data_points": 94, "source": "agent"}, "reddit_data": {"total_posts": 50, "total_engagement": 840452, "avg_engagement": 16809.04, "top_subreddits": [{"name": "Meditation", "count": 4}, {"name": "LifeProTips", "count": 3}, {"name": "science", "count": 3}, {"name": "pics", "count": 3}, {"name": "nextfuckinglevel", "count": 2}], "timestamps": [1756009189.0, 1759503390.0, 1527120269.0, 1728825985.0, 1649944633.0, 1609509476.0, 1750930020.0, 1760450915.0, 1734620364.0, 1708498512.0, 1731289652.0, 1712402347.0, 1747580786.0, 1740934797.0, 1751657704.0, 1736082121.0, 1756480855.0, 1757503176.0, 1654489305.0, 1745086977.0, 1665930582.0, 1692619292.0, 1736168260.0, 1637678140.0, 1610370521.0, 1517094117.0, 1752678293.0, 1565035635.0, 1740241488.0, 1717165919.0, 1563706608.0, 1460556688.0, 1655082661.0, 1685863919.0, 1587407013.0, 1733370812.0, 1750594929.0, 1575579129.0, 1664118830.0, 1519158645.0, 1589544631.0, 1758488765.0, 1740112441.0, 1752409591.0, 1707359996.0, 1608049483.0, 1751937122.0, 1642510208.0, 1681470705.0, 1549975277.0]}, "youtube_data": {"total_videos": 20, "total_views": 120436023, "avg_views": 6021801.15, "top_channels": [{"name": "Goodful", "count": 3}, {"name": "Sadhguru", "count": 2}, {"name": "Boho Beautiful Yoga", "count": 2}, {"name": "Yongey Mingyur Rinpoche", "count": 2}, {"name": "Jason Stephenson - Guided Sleep Meditation ", "count": 2}], "timestamps": [1740725506.0, 1609510118.0, 1567609207.0, 1686574821.0, 1730617140.0, 1299688047.0, 1585753215.0, 1715867096.0, 1569978900.0, 1753419241.0, 1736078442.0, 1597237202.0, 1698976831.0, 1444607576.0, 1646758801.0, 1748086204.0, 1472461200.0, 1726134060.0, 1678453233.0, 1603292403.0]}}, "children": [{"id": "walking_meditation_2025-10-24T20:57:04.121101", "topic": "walking meditation", "score": 95.8, "level": 1, "researched_at": "2025-10-24T20:57:04.121101", "output_file": "outputs\\topic-selection.json", "data": {"topic": "walking meditation", "scores": {"composite_score": 95.8, "trends_score": 88.0, "reddit_score": 100.0, "youtube_score": 100, "confidence": 100, "sources_with_data": 3, "competition": {"trends_competition": 70, "reddit_competition": 59.5, "youtube_competition": 25.0, "overall_competition": 51.5, "competition_level": "high", "competition_emoji": "\ud83d\udfe0", "competition_description": "HIGH"}, "opportunity": {"opportunity_score": 46.46, "recommendation": "viable", "recommendation_emoji": "\ud83d\udfe1", "recommendation_description": "VIABLE - Good opportunity with effort", "risk_level": "MODERATE", "complexity": "COMPLEX", "complexity_description": "Need unique angle or superior quality", "demand_score": 95.8, "competition_score": 51.5}, "insights": ["\u2705 Strong validated demand", "\u26a0\ufe0f High competition - strong positioning required", "\u2705 Content gap - high views, few videos!", "\u2705 Active community with pain points"], "audience_size": 10824824, "zone": "viable", "richness": {"richness_score": 67.11, "richness_stars": 3, "sources_count": 3, "breakdown": {"trends": {"richness": 100, "data_points": 78, "average_interest": 80}, "reddit": {"richness": 83.0, "total_posts": 50, "avg_engagement": 4857.96}, "youtube": {"richness": 18.3, "total_videos": 20, "avg_views": 129096.3}}}, "recency": {"recency_score": 30.86, "recent_activity_pct": 21.4, "trend_momentum": "stable", "avg_content_age_days": 732.8, "recent_30_days": 9, "recent_90_days": 15, "total_content": 70}}, "trends_data": {"average_interest": 80, "peak_interest": 80, "trend_direction": "stable", "data_points": 78, "source": "agent"}, "reddit_data": {"total_posts": 50, "total_engagement": 242898, "avg_engagement": 4857.96, "top_subreddits": [{"name": "BestofRedditorUpdates", "count": 7}, {"name": "Meditation", "count": 6}, {"name": "DrJoeDispenza", "count": 3}, {"name": "CozyPlaces", "count": 1}, {"name": "YouShouldKnow", "count": 1}], "timestamps": [1759599324.0, 1590436525.0, 1720825753.0, 1748313783.0, 1677755225.0, 1581367528.0, 1511279084.0, 1752791073.0, 1688911720.0, 1758914699.0, 1643703910.0, 1759159617.0, 1754300850.0, 1758805095.0, 1757365998.0, 1756960761.0, 1749268807.0, 1712526076.0, 1758805287.0, 1759003834.0, 1747800246.0, 1753269763.0, 1758805248.0, 1747522074.0, 1753400784.0, 1756009189.0, 1759761396.0, 1733502944.0, 1716109801.0, 1688146468.0, 1745866606.0, 1706363826.0, 1665482315.0, 1736244162.0, 1649770541.0, 1704204766.0, 1736744464.0, 1632830554.0, 1568679500.0, 1744043508.0, 1748465196.0, 1757801628.0, 1753400737.0, 1720584063.0, 1750982828.0, 1687113259.0, 1753456706.0, 1755356495.0, 1742265183.0, 1718510463.0]}, "youtube_data": {"total_videos": 20, "total_views": 2581926, "avg_views": 129096.3, "top_channels": [{"name": "Dr. Tracey Marks", "count": 2}, {"name": "Wildwood Mindfulness", "count": 2}, {"name": "Jim Brickman Music", "count": 1}, {"name": "AXA Global Healthcare", "count": 1}, {"name": "Yongey Mingyur Rinpoche", "count": 1}], "timestamps": [1438887722.0, 1742388302.0, 1562591596.0, 1635752012.0, 1721658744.0, 1631196001.0, 1680786002.0, 1761235391.0, 1689480003.0, 1678276818.0, 1589278866.0, 1206991300.0, 1709442010.0, 1687982264.0, 1709244428.0, 1731681030.0, 1692546369.0, 1612676472.0, 1742592756.0, 1745775011.0]}, "description": "Walking meditation is a mindfulness practice common in Buddhism that blends the physical experience of walking with focused meditative awareness. It involves paying close attention to the specific components of each step, coordinating breath with movement, and bringing mindfulness to an activity often done on autopilot, typically done at a slower pace than normal walking with eyes open and attention on the environment and bodily sensations."}, "children": []}, {"id": "loving_kindness_meditation_2025-10-24T20:57:04.121101", "topic": "loving kindness meditation", "score": 93.49, "level": 1, "researched_at": "2025-10-24T20:57:04.121101", "output_file": "outputs\\topic-selection.json", "data": {"topic": "loving kindness meditation", "scores": {"composite_score": 93.49, "trends_score": 81.4, "reddit_score": 100.0, "youtube_score": 100, "confidence": 100, "sources_with_data": 3, "competition": {"trends_competition": 70, "reddit_competition": 59.5, "youtube_competition": 30.0, "overall_competition": 53.17, "competition_level": "high", "competition_emoji": "\ud83d\udfe0", "competition_description": "HIGH"}, "opportunity": {"opportunity_score": 43.78, "recommendation": "risky", "recommendation_emoji": "\ud83d\udd35", "recommendation_description": "RISKY - Need strong differentiation", "risk_level": "HIGH", "complexity": "COMPLEX", "complexity_description": "Need unique angle or superior quality", "demand_score": 93.49, "competition_score": 53.17}, "insights": ["\u2705 Strong validated demand", "\u26a0\ufe0f High competition - strong positioning required", "\u2705 Content gap - high views, few videos!", "\u2705 Active community with pain points"], "audience_size": 16713581, "zone": "viable", "richness": {"richness_score": 65.89, "richness_stars": 3, "sources_count": 3, "breakdown": {"trends": {"richness": 100, "data_points": 72, "average_interest": 74}, "reddit": {"richness": 53.0, "total_posts": 50, "avg_engagement": 2711.16}, "youtube": {"richness": 44.7, "total_videos": 20, "avg_views": 458901.15}}}, "recency": {"recency_score": 36.0, "recent_activity_pct": 30.0, "trend_momentum": "stable", "avg_content_age_days": 1008.3, "recent_30_days": 10, "recent_90_days": 21, "total_content": 70}}, "trends_data": {"average_interest": 74, "peak_interest": 74, "trend_direction": "stable", "data_points": 72, "source": "agent"}, "reddit_data": {"total_posts": 50, "total_engagement": 135558, "avg_engagement": 2711.16, "top_subreddits": [{"name": "Meditation", "count": 12}, {"name": "Buddhism", "count": 3}, {"name": "coolguides", "count": 2}, {"name": "science", "count": 1}, {"name": "mildlyinfuriating", "count": 1}], "timestamps": [1566682354.0, 1704885750.0, 1507042954.0, 1567712456.0, 1753456706.0, 1760726503.0, 1757768261.0, 1754846002.0, 1610606279.0, 1640869690.0, 1552836423.0, 1756389190.0, 1683214412.0, 1748858271.0, 1734934078.0, 1761151806.0, 1636392803.0, 1761152267.0, 1758911522.0, 1711599100.0, 1753481884.0, 1608003684.0, 1756752837.0, 1759647096.0, 1727024408.0, 1617969566.0, 1741974487.0, 1760652110.0, 1726337652.0, 1735706445.0, 1760741498.0, 1760618059.0, 1724346422.0, 1757703511.0, 1758911619.0, 1751293815.0, 1757221730.0, 1666937539.0, 1731994129.0, 1425146277.0, 1749663826.0, 1757151917.0, 1758067217.0, 1755520230.0, 1744895921.0, 1739670094.0, 1756445905.0, 1750188191.0, 1752096212.0, 1755195653.0]}, "youtube_data": {"total_videos": 20, "total_views": 9178023, "avg_views": 458901.15, "top_channels": [{"name": "Josh Wise | WiseMindBody", "count": 1}, {"name": "New Horizon Holistic Centre - Topic", "count": 1}, {"name": "Great Meditation", "count": 1}, {"name": "The Mindful Movement", "count": 1}, {"name": "Living Better", "count": 1}], "timestamps": [1455188701.0, 1512086360.0, 1627808431.0, 1563270585.0, 1438739179.0, 1438573719.0, 1551265823.0, 1761235390.0, 1324660774.0, 1664026211.0, 1629323173.0, 1640433603.0, 1610661145.0, 1629932409.0, 1623315616.0, 1606579201.0, 1743088748.0, 1733570102.0, 1516443019.0, 1595433609.0]}, "description": "Loving-kindness meditation, also known as metta meditation, is a Buddhist practice that cultivates unconditional kindness and benevolence toward all beings. It involves mentally sending goodwill, kindness, and warmth through silently repeating mantras, typically starting with oneself and extending to loved ones, neutral people, difficult people, and finally all beings everywhere."}, "children": []}, {"id": "mindfulness_meditation_2025-10-24T20:57:04.121101", "topic": "mindfulness meditation", "score": 100.0, "level": 1, "researched_at": "2025-10-24T20:57:04.121101", "output_file": "outputs\\topic-selection.json", "data": {"topic": "mindfulness meditation", "scores": {"composite_score": 100.0, "trends_score": 100.0, "reddit_score": 100.0, "youtube_score": 100.0, "confidence": 100, "sources_with_data": 3, "competition": {"trends_competition": 80, "reddit_competition": 51.5, "youtube_competition": 45.0, "overall_competition": 58.83, "competition_level": "high", "competition_emoji": "\ud83d\udfe0", "competition_description": "HIGH"}, "opportunity": {"opportunity_score": 41.17, "recommendation": "risky", "recommendation_emoji": "\ud83d\udd35", "recommendation_description": "RISKY - Need strong differentiation", "risk_level": "HIGH", "complexity": "COMPLEX", "complexity_description": "Need unique angle or superior quality", "demand_score": 100.0, "competition_score": 58.83}, "insights": ["\u2705 Strong validated demand", "\u26a0\ufe0f High competition - strong positioning required", "\u2705 Content gap - high views, few videos!", "\u2705 Active community with pain points"], "audience_size": 108790249, "zone": "viable", "richness": {"richness_score": 100.0, "richness_stars": 5, "sources_count": 3, "breakdown": {"trends": {"richness": 100, "data_points": 95, "average_interest": 92}, "reddit": {"richness": 100, "total_posts": 50, "avg_engagement": 6643.08}, "youtube": {"richness": 100, "total_videos": 20, "avg_views": 4962904.75}}}, "recency": {"recency_score": 22.29, "recent_activity_pct": 7.1, "trend_momentum": "stable", "avg_content_age_days": 1923.2, "recent_30_days": 1, "recent_90_days": 5, "total_content": 70}}, "trends_data": {"average_interest": 92, "peak_interest": 92, "trend_direction": "stable", "data_points": 95, "source": "agent"}, "reddit_data": {"total_posts": 50, "total_engagement": 332154, "avg_engagement": 6643.08, "top_subreddits": [{"name": "Meditation", "count": 15}, {"name": "science", "count": 15}, {"name": "todayilearned", "count": 2}, {"name": "woahdude", "count": 2}, {"name": "Healthygamergg", "count": 1}], "timestamps": [1693277117.0, 1590867684.0, 1649944633.0, 1643590642.0, 1736082121.0, 1611696814.0, 1566076518.0, 1563706608.0, 1654217859.0, 1575579129.0, 1589544631.0, 1430339983.0, 1748340461.0, 1424137205.0, 1418400936.0, 1754013914.0, 1387760689.0, 1579151947.0, 1757091690.0, 1694533862.0, 1585961131.0, 1725818326.0, 1431023391.0, 1398537567.0, 1612543798.0, 1544827198.0, 1657448003.0, 1572228270.0, 1597105049.0, 1622141098.0, 1674758490.0, 1754447383.0, 1613562387.0, 1746087983.0, 1525955238.0, 1608108436.0, 1530402818.0, 1526823785.0, 1728552814.0, 1678475203.0, 1295683637.0, 1736928636.0, 1627307642.0, 1619175136.0, 1740932581.0, 1663110230.0, 1599743996.0, 1734620364.0, 1507042954.0, 1756421877.0]}, "youtube_data": {"total_videos": 20, "total_views": 99258095, "avg_views": 4962904.75, "top_channels": [{"name": "Calm", "count": 5}, {"name": "The Mindful Movement", "count": 3}, {"name": "MindfulPeace", "count": 3}, {"name": "The Honest Guys - Meditations - Relaxation", "count": 2}, {"name": "Great Meditation", "count": 1}], "timestamps": [1472461200.0, 1427216400.0, 1475092924.0, 1615111216.0, 1563876005.0, 1665584703.0, 1473466084.0, 1761109206.0, 1465236871.0, 1550804828.0, 1496042535.0, 1540888386.0, 1576175615.0, 1515517205.0, 1474489256.0, 1539428404.0, 1669642214.0, 1585778414.0, 1744020900.0, 1567609207.0]}, "description": "Mindfulness meditation is the practice of maintaining moment-by-moment awareness of thoughts, feelings, bodily sensations, and the surrounding environment through a gentle, nurturing lens without judgment. It involves being fully present and aware of your current experience without overreacting or getting lost in thoughts."}, "children": []}, {"id": "transcendental_meditation_2025-10-24T20:57:04.121101", "topic": "transcendental meditation", "score": 95.03, "level": 1, "researched_at": "2025-10-24T20:57:04.121101", "output_file": "outputs\\topic-selection.json", "data": {"topic": "transcendental meditation", "scores": {"composite_score": 95.03, "trends_score": 85.8, "reddit_score": 100.0, "youtube_score": 100, "confidence": 100, "sources_with_data": 3, "competition": {"trends_competition": 70, "reddit_competition": 70.5, "youtube_competition": 30.0, "overall_competition": 56.83, "competition_level": "high", "competition_emoji": "\ud83d\udfe0", "competition_description": "HIGH"}, "opportunity": {"opportunity_score": 41.02, "recommendation": "risky", "recommendation_emoji": "\ud83d\udd35", "recommendation_description": "RISKY - Need strong differentiation", "risk_level": "HIGH", "complexity": "COMPLEX", "complexity_description": "Need unique angle or superior quality", "demand_score": 95.03, "competition_score": 56.83}, "insights": ["\u2705 Strong validated demand", "\u26a0\ufe0f High competition - strong positioning required", "\u2705 Content gap - high views, few videos!", "\u2705 Active community with pain points"], "audience_size": 23446242, "zone": "viable", "richness": {"richness_score": 70.01, "richness_stars": 4, "sources_count": 3, "breakdown": {"trends": {"richness": 100, "data_points": 75, "average_interest": 78}, "reddit": {"richness": 39.8, "total_posts": 50, "avg_engagement": 1771.34}, "youtube": {"richness": 70.2, "total_videos": 20, "avg_views": 777883.75}}}, "recency": {"recency_score": 24.0, "recent_activity_pct": 10.0, "trend_momentum": "stable", "avg_content_age_days": 1267.7, "recent_30_days": 1, "recent_90_days": 7, "total_content": 70}}, "trends_data": {"average_interest": 78, "peak_interest": 78, "trend_direction": "stable", "data_points": 75, "source": "agent"}, "reddit_data": {"total_posts": 50, "total_engagement": 88567, "avg_engagement": 1771.34, "top_subreddits": [{"name": "Meditation", "count": 16}, {"name": "transcendental", "count": 6}, {"name": "psychology", "count": 3}, {"name": "aliens", "count": 2}, {"name": "thebeachboys", "count": 2}], "timestamps": [1756961292.0, 1646340172.0, 1722683683.0, 1408641570.0, 1524526776.0, 1710800517.0, 1563711740.0, 1751361776.0, 1644804893.0, 1626631639.0, 1745397044.0, 1532836171.0, 1759861969.0, 1750337462.0, 1741732669.0, 1711492116.0, 1741752189.0, 1687226613.0, 1755616321.0, 1582324754.0, 1720525473.0, 1747883892.0, 1748291860.0, 1751589216.0, 1751297112.0, 1744216714.0, 1737559346.0, 1757003404.0, 1733397720.0, 1682803029.0, 1722869874.0, 1712343326.0, 1757432918.0, 1748309344.0, 1710636190.0, 1706063366.0, 1757423780.0, 1685576983.0, 1726096428.0, 1661520719.0, 1744482335.0, 1723532511.0, 1745802389.0, 1542367863.0, 1423163068.0, 1741752338.0, 1740272973.0, 1755953594.0, 1736778756.0, 1717117277.0]}, "youtube_data": {"total_videos": 20, "total_views": 15557675, "avg_views": 777883.75, "top_channels": [{"name": "Transcendental Meditation", "count": 8}, {"name": "David Lynch Foundation", "count": 3}, {"name": "Maharishi International University", "count": 1}, {"name": "Tony Nader MD, PhD", "count": 1}, {"name": "CBS Sunday Morning", "count": 1}], "timestamps": [1238771558.0, 1591206301.0, 1391018818.0, 1737059379.0, 1683646207.0, 1581960713.0, 1305937938.0, 1250143177.0, 1396993664.0, 1423665574.0, 1703372545.0, 1610205310.0, 1734965329.0, 1543884891.0, 1690484401.0, 1656095411.0, 1388425135.0, 1466654313.0, 1717865841.0, 1716596179.0]}, "description": "Transcendental Meditation (TM) is a form of silent meditation developed by Maharishi Mahesh Yogi that involves the silent repetition of a mantra or sound for 15-20 minutes twice per day. It is a technique for avoiding distracting thoughts and promoting a state of relaxed awareness, with the goal of transcending to a state of pure awareness beyond the personal self."}, "children": []}, {"id": "vipassana_meditation_2025-10-24T20:57:04.121101", "topic": "vipassana meditation", "score": 93.11, "level": 1, "researched_at": "2025-10-24T20:57:04.121101", "output_file": "outputs\\topic-selection.json", "data": {"topic": "vipassana meditation", "scores": {"composite_score": 93.11, "trends_score": 80.3, "reddit_score": 100.0, "youtube_score": 100, "confidence": 100, "sources_with_data": 3, "competition": {"trends_competition": 70, "reddit_competition": 71.5, "youtube_competition": 30.0, "overall_competition": 57.17, "competition_level": "high", "competition_emoji": "\ud83d\udfe0", "competition_description": "HIGH"}, "opportunity": {"opportunity_score": 39.88, "recommendation": "risky", "recommendation_emoji": "\ud83d\udd35", "recommendation_description": "RISKY - Need strong differentiation", "risk_level": "HIGH", "complexity": "COMPLEX", "complexity_description": "Need unique angle or superior quality", "demand_score": 93.105, "competition_score": 57.17}, "insights": ["\u2705 Strong validated demand", "\u26a0\ufe0f High competition - strong positioning required", "\u2705 Content gap - high views, few videos!"], "audience_size": 18579765, "zone": "viable", "richness": {"richness_score": 56.45, "richness_stars": 3, "sources_count": 3, "breakdown": {"trends": {"richness": 100, "data_points": 71, "average_interest": 73}, "reddit": {"richness": 16.2, "total_posts": 50, "avg_engagement": 88.12}, "youtube": {"richness": 53.1, "total_videos": 20, "avg_views": 563767.95}}}, "recency": {"recency_score": 38.57, "recent_activity_pct": 34.3, "trend_momentum": "stable", "avg_content_age_days": 726.2, "recent_30_days": 10, "recent_90_days": 24, "total_content": 70}}, "trends_data": {"average_interest": 73, "peak_interest": 73, "trend_direction": "stable", "data_points": 71, "source": "agent"}, "reddit_data": {"total_posts": 50, "total_engagement": 4406, "avg_engagement": 88.12, "top_subreddits": [{"name": "vipassana", "count": 16}, {"name": "Meditation", "count": 13}, {"name": "Buddhism", "count": 3}, {"name": "theravada", "count": 2}, {"name": "delhi", "count": 1}], "timestamps": [1738399594.0, 1628397257.0, 1748573878.0, 1389269175.0, 1691083087.0, 1759435980.0, 1757689367.0, 1757781161.0, 1733397720.0, 1375057689.0, 1690122512.0, 1745745682.0, 1760878919.0, 1761150865.0, 1726576676.0, 1754192459.0, 1759984761.0, 1751549530.0, 1760585322.0, 1752402344.0, 1744310959.0, 1745497798.0, 1758497278.0, 1754657534.0, 1751861648.0, 1729189100.0, 1756648510.0, 1758934887.0, 1722944410.0, 1761107915.0, 1737910010.0, 1751028446.0, 1756648832.0, 1755806094.0, 1755006069.0, 1751283646.0, 1757956884.0, 1757404327.0, 1738796323.0, 1756235667.0, 1757236745.0, 1752482296.0, 1735502985.0, 1759436100.0, 1758989088.0, 1710505454.0, 1749727241.0, 1759446898.0, 1753794051.0, 1750225786.0]}, "youtube_data": {"total_videos": 20, "total_views": 11275359, "avg_views": 563767.95, "top_channels": [{"name": "Can You Zen", "count": 8}, {"name": "Declutter The Mind", "count": 7}, {"name": "Vipassana Meditation", "count": 3}, {"name": "Eckhart Tolle", "count": 1}, {"name": "TEDx Talks", "count": 1}], "timestamps": [1687179605.0, 1655989207.0, 1604986803.0, 1694370611.0, 1604632503.0, 1695038401.0, 1632618008.0, 1605337443.0, 1614313430.0, 1604987319.0, 1668686439.0, 1690470031.0, 1629766801.0, 1414487258.0, 1654779634.0, 1728475208.0, 1687781704.0, 1655384412.0, 1457924756.0, 1384546002.0]}, "description": "Vipassana meditation, meaning 'to see things as they really are' or 'clear seeing,' is one of India's most ancient meditation techniques from the original teachings of the Buddha. It is an insight meditation practice that involves observing thoughts and emotions without judgment, developing clear awareness of exactly what is happening in the present moment through observing sensations throughout the body and developing equanimity."}, "children": []}, {"id": "body_scan_meditation_2025-10-24T20:57:04.121101", "topic": "body scan meditation", "score": 96.19, "level": 1, "researched_at": "2025-10-24T20:57:04.121101", "output_file": "outputs\\topic-selection.json", "data": {"topic": "body scan meditation", "scores": {"composite_score": 96.19, "trends_score": 89.1, "reddit_score": 100.0, "youtube_score": 100, "confidence": 100, "sources_with_data": 3, "competition": {"trends_competition": 80, "reddit_competition": 71.5, "youtube_competition": 25.0, "overall_competition": 58.83, "competition_level": "high", "competition_emoji": "\ud83d\udfe0", "competition_description": "HIGH"}, "opportunity": {"opportunity_score": 39.6, "recommendation": "risky", "recommendation_emoji": "\ud83d\udd35", "recommendation_description": "RISKY - Need strong differentiation", "risk_level": "HIGH", "complexity": "COMPLEX", "complexity_description": "Need unique angle or superior quality", "demand_score": 96.185, "competition_score": 58.83}, "insights": ["\u2705 Strong validated demand", "\u26a0\ufe0f High competition - strong positioning required", "\u2705 Content gap - high views, few videos!"], "audience_size": 11750528, "zone": "viable", "richness": {"richness_score": 48.3, "richness_stars": 2, "sources_count": 3, "breakdown": {"trends": {"richness": 100, "data_points": 80, "average_interest": 81}, "reddit": {"richness": 22.4, "total_posts": 50, "avg_engagement": 528.54}, "youtube": {"richness": 22.5, "total_videos": 20, "avg_views": 181205.05}}}, "recency": {"recency_score": 24.0, "recent_activity_pct": 10.0, "trend_momentum": "stable", "avg_content_age_days": 632.8, "recent_30_days": 3, "recent_90_days": 7, "total_content": 70}}, "trends_data": {"average_interest": 81, "peak_interest": 81, "trend_direction": "stable", "data_points": 80, "source": "agent"}, "reddit_data": {"total_posts": 50, "total_engagement": 26427, "avg_engagement": 528.54, "top_subreddits": [{"name": "Meditation", "count": 14}, {"name": "TheMindIlluminated", "count": 6}, {"name": "vipassana", "count": 6}, {"name": "Mindfulness", "count": 3}, {"name": "streamentry", "count": 3}], "timestamps": [1656324546.0, 1598808940.0, 1716487952.0, 1737745859.0, 1751215790.0, 1747316569.0, 1729485848.0, 1723532511.0, 1751805888.0, 1729315669.0, 1754406509.0, 1752875541.0, 1756994798.0, 1761062114.0, 1758492214.0, 1590842564.0, 1759868520.0, 1752403401.0, 1734206706.0, 1758260224.0, 1748272706.0, 1569836679.0, 1747950412.0, 1741048993.0, 1715004598.0, 1751876975.0, 1742045175.0, 1739973196.0, 1743758553.0, 1746279009.0, 1736474150.0, 1737813837.0, 1746294701.0, 1738908585.0, 1748257640.0, 1744302724.0, 1742565575.0, 1717420593.0, 1742047948.0, 1736733589.0, 1741683689.0, 1740946852.0, 1745392537.0, 1732016343.0, 1725715030.0, 1736760300.0, 1743831423.0, 1743401393.0, 1670140307.0, 1742147036.0]}, "youtube_data": {"total_videos": 20, "total_views": 3624101, "avg_views": 181205.05, "top_channels": [{"name": "Dr. Adam Rosen- Knee Replacement & Orthopedic Info", "count": 2}, {"name": "Ally Boothroyd | Sarovara Yoga", "count": 2}, {"name": "Mount Sinai Health System", "count": 1}, {"name": "Therapy in a Nutshell", "count": 1}, {"name": "American College of Surgeons", "count": 1}], "timestamps": [1412095362.0, 1697754403.0, 1705046403.0, 1559822400.0, 1650299452.0, 1702482710.0, 1698775464.0, 1643643199.0, 1761113701.0, 1673704811.0, 1687337055.0, 1664359224.0, 1665524240.0, 1620824432.0, 1667574595.0, 1447524348.0, 1692719351.0, 1736533416.0, 1685980074.0, 1614389227.0]}, "description": "Body scan meditation is a mindfulness practice that involves systematically focusing attention on different parts of the body from head to toe (or feet to head) to notice physical sensations without judgment. The purpose is to reconnect with your physical self, tune into bodily sensations, and promote greater awareness of tension, pain, or anything out of the ordinary."}, "children": []}, {"id": "guided_visualization_meditation_2025-10-24T20:57:04.121101", "topic": "guided visualization meditation", "score": 97.72, "level": 1, "researched_at": "2025-10-24T20:57:04.121101", "output_file": "outputs\\topic-selection.json", "data": {"topic": "guided visualization meditation", "scores": {"composite_score": 97.72, "trends_score": 93.5, "reddit_score": 100.0, "youtube_score": 100, "confidence": 100, "sources_with_data": 3, "competition": {"trends_competition": 80, "reddit_competition": 71.5, "youtube_competition": 30.0, "overall_competition": 60.5, "competition_level": "high", "competition_emoji": "\ud83d\udfe0", "competition_description": "HIGH"}, "opportunity": {"opportunity_score": 38.6, "recommendation": "risky", "recommendation_emoji": "\ud83d\udd35", "recommendation_description": "RISKY - Need strong differentiation", "risk_level": "HIGH", "complexity": "COMPLEX", "complexity_description": "Need unique angle or superior quality", "demand_score": 97.725, "competition_score": 60.5}, "insights": ["\u2705 Strong validated demand", "\u26a0\ufe0f High competition - strong positioning required", "\u2705 Content gap - high views, few videos!"], "audience_size": 27683663, "zone": "viable", "richness": {"richness_score": 68.87, "richness_stars": 3, "sources_count": 3, "breakdown": {"trends": {"richness": 100, "data_points": 84, "average_interest": 85}, "reddit": {"richness": 22.0, "total_posts": 50, "avg_engagement": 498.26}, "youtube": {"richness": 84.6, "total_videos": 20, "avg_views": 957937.5}}}, "recency": {"recency_score": 43.71, "recent_activity_pct": 42.9, "trend_momentum": "stable", "avg_content_age_days": 862.4, "recent_30_days": 14, "recent_90_days": 30, "total_content": 70}}, "trends_data": {"average_interest": 85, "peak_interest": 85, "trend_direction": "stable", "data_points": 84, "source": "agent"}, "reddit_data": {"total_posts": 50, "total_engagement": 24913, "avg_engagement": 498.26, "top_subreddits": [{"name": "tarotjourneys", "count": 7}, {"name": "Meditation", "count": 5}, {"name": "audiomeditation", "count": 3}, {"name": "realityshifting", "count": 2}, {"name": "enlightenment", "count": 2}], "timestamps": [1515346962.0, 1761289350.0, 1757016846.0, 1741379524.0, 1757292633.0, 1760054046.0, 1755715763.0, 1757423857.0, 1517759539.0, 1760003058.0, 1737836845.0, 1617969566.0, 1759554938.0, 1759065429.0, 1739583475.0, 1761030022.0, 1760658323.0, 1760658591.0, 1760658284.0, 1760658235.0, 1759950779.0, 1760658525.0, 1753121397.0, 1758045027.0, 1758870245.0, 1757171817.0, 1381244349.0, 1739691751.0, 1757567575.0, 1637968925.0, 1757116847.0, 1756512069.0, 1753949923.0, 1755907233.0, 1750794997.0, 1755302446.0, 1754697653.0, 1735688866.0, 1754500681.0, 1751586372.0, 1748597709.0, 1754092845.0, 1753949798.0, 1738894629.0, 1742038467.0, 1753488050.0, 1752537126.0, 1738354456.0, 1753162623.0, 1730559760.0]}, "youtube_data": {"total_videos": 20, "total_views": 19158750, "avg_views": 957937.5, "top_channels": [{"name": "Jason Stephenson - Guided Sleep Meditation ", "count": 5}, {"name": "Great Meditation", "count": 3}, {"name": "Dr. Jennifer Andrews (Dr. Jen)", "count": 2}, {"name": "City of Hope", "count": 1}, {"name": "Generation Calm", "count": 1}], "timestamps": [1418863740.0, 1659456902.0, 1434393000.0, 1571767202.0, 1624358022.0, 1391220603.0, 1633021721.0, 1761204606.0, 1625806811.0, 1708336818.0, 1620413331.0, 1586563707.0, 1444607576.0, 1702262724.0, 1709722845.0, 1688461212.0, 1487479464.0, 1431369001.0, 1584147434.0, 1439240401.0]}, "description": "Guided visualization meditation, also known as guided imagery, is a relaxation technique where practitioners use their senses and imagination to visualize positive, peaceful settings or outcomes to help settle the mind and body. It involves constructing an immersed state throughout the body by visualizing all five senses, typically with someone guiding the experience by describing a scene or story slowly and gently."}, "children": []}, {"id": "mantra_meditation_2025-10-24T20:57:04.121101", "topic": "mantra meditation", "score": 95.41, "level": 1, "researched_at": "2025-10-24T20:57:04.121101", "output_file": "outputs\\topic-selection.json", "data": {"topic": "mantra meditation", "scores": {"composite_score": 95.41, "trends_score": 86.9, "reddit_score": 100.0, "youtube_score": 100.0, "confidence": 100, "sources_with_data": 3, "competition": {"trends_competition": 70, "reddit_competition": 71.5, "youtube_competition": 45.0, "overall_competition": 62.17, "competition_level": "high", "competition_emoji": "\ud83d\udfe0", "competition_description": "HIGH"}, "opportunity": {"opportunity_score": 36.1, "recommendation": "risky", "recommendation_emoji": "\ud83d\udd35", "recommendation_description": "RISKY - Need strong differentiation", "risk_level": "HIGH", "complexity": "COMPLEX", "complexity_description": "Need unique angle or superior quality", "demand_score": 95.41499999999999, "competition_score": 62.17}, "insights": ["\u2705 Strong validated demand", "\u26a0\ufe0f High competition - strong positioning required", "\u2705 Content gap - high views, few videos!"], "audience_size": 135126096, "zone": "viable", "richness": {"richness_score": 75.92, "richness_stars": 4, "sources_count": 3, "breakdown": {"trends": {"richness": 100, "data_points": 77, "average_interest": 79}, "reddit": {"richness": 27.8, "total_posts": 50, "avg_engagement": 912.12}, "youtube": {"richness": 100, "total_videos": 20, "avg_views": 6359024.5}}}, "recency": {"recency_score": 37.71, "recent_activity_pct": 32.9, "trend_momentum": "stable", "avg_content_age_days": 995.8, "recent_30_days": 11, "recent_90_days": 23, "total_content": 70}}, "trends_data": {"average_interest": 79, "peak_interest": 79, "trend_direction": "stable", "data_points": 77, "source": "agent"}, "reddit_data": {"total_posts": 50, "total_engagement": 45606, "avg_engagement": 912.12, "top_subreddits": [{"name": "Meditation", "count": 14}, {"name": "Tantrasadhaks", "count": 3}, {"name": "hinduism", "count": 2}, {"name": "Ex_ArtOfLiving", "count": 2}, {"name": "Buddhism", "count": 2}], "timestamps": [1525623647.0, 1740029699.0, 1646854013.0, 1443103971.0, 1675550802.0, 1749071842.0, 1556709747.0, 1614689977.0, 1637468719.0, 1753456706.0, 1736152740.0, 1609509476.0, 1759181903.0, 1682803029.0, 1756526904.0, 1752330413.0, 1737836845.0, 1759922582.0, 1760938251.0, 1741164050.0, 1755916278.0, 1759583599.0, 1760665260.0, 1761317576.0, 1757279450.0, 1736152864.0, 1760329515.0, 1758709058.0, 1759948688.0, 1759127274.0, 1545837959.0, 1657725957.0, 1759217157.0, 1718172464.0, 1743375983.0, 1755466956.0, 1754875524.0, 1755587399.0, 1756375015.0, 1741210715.0, 1756276025.0, 1745005289.0, 1756029907.0, 1738773025.0, 1752400947.0, 1755280650.0, 1752898340.0, 1755173079.0, 1737820450.0, 1503084012.0]}, "youtube_data": {"total_videos": 20, "total_views": 127180490, "avg_views": 6359024.5, "top_channels": [{"name": "Meditative Mind", "count": 11}, {"name": "Hands-On Meditation", "count": 2}, {"name": "Rekha Malhotra English", "count": 1}, {"name": "Chantress Seba", "count": 1}, {"name": "MPK Fitness Classes", "count": 1}], "timestamps": [1580069805.0, 1469382390.0, 1437057884.0, 1676747304.0, 1712935086.0, 1738712117.0, 1499254412.0, 1522254615.0, 1761221356.0, 1457007047.0, 1583230409.0, 1491065921.0, 1524928537.0, 1470938402.0, 1737808500.0, 1539156185.0, 1522754317.0, 1530621635.0, 1717869340.0, 1651133951.0]}, "description": "Mantra meditation is the process of quieting and focusing the mind using a syllable, word, or phrase (called a mantra) that is repeated either aloud, chanted, whispered, or silently in the mind. The word mantra comes from Sanskrit roots 'man' (mind) and 'trai' (to protect or free), making mantras tools of the mind that help prevent wandering thoughts and anchor awareness in the present moment."}, "children": []}, {"id": "zen_meditation_2025-10-24T20:57:04.121101", "topic": "zen meditation", "score": 94.26, "level": 1, "researched_at": "2025-10-24T20:57:04.121101", "output_file": "outputs\\topic-selection.json", "data": {"topic": "zen meditation", "scores": {"composite_score": 94.26, "trends_score": 83.6, "reddit_score": 100.0, "youtube_score": 100.0, "confidence": 100, "sources_with_data": 3, "competition": {"trends_competition": 70, "reddit_competition": 70.5, "youtube_competition": 45.0, "overall_competition": 61.83, "competition_level": "high", "competition_emoji": "\ud83d\udfe0", "competition_description": "HIGH"}, "opportunity": {"opportunity_score": 35.98, "recommendation": "risky", "recommendation_emoji": "\ud83d\udd35", "recommendation_description": "RISKY - Need strong differentiation", "risk_level": "HIGH", "complexity": "COMPLEX", "complexity_description": "Need unique angle or superior quality", "demand_score": 94.26, "competition_score": 61.83}, "insights": ["\u2705 Strong validated demand", "\u26a0\ufe0f High competition - strong positioning required", "\u2705 Content gap - high views, few videos!", "\u2705 Active community with pain points"], "audience_size": 80865947, "zone": "viable", "richness": {"richness_score": 79.15, "richness_stars": 4, "sources_count": 3, "breakdown": {"trends": {"richness": 100, "data_points": 74, "average_interest": 76}, "reddit": {"richness": 37.5, "total_posts": 50, "avg_engagement": 1604.42}, "youtube": {"richness": 100, "total_videos": 20, "avg_views": 3659286.3}}}, "recency": {"recency_score": 30.0, "recent_activity_pct": 20.0, "trend_momentum": "stable", "avg_content_age_days": 1075.7, "recent_30_days": 2, "recent_90_days": 14, "total_content": 70}}, "trends_data": {"average_interest": 76, "peak_interest": 76, "trend_direction": "stable", "data_points": 74, "source": "agent"}, "reddit_data": {"total_posts": 50, "total_engagement": 80221, "avg_engagement": 1604.42, "top_subreddits": [{"name": "zen", "count": 15}, {"name": "Meditation", "count": 8}, {"name": "zenbuddhism", "count": 2}, {"name": "Overwatch", "count": 2}, {"name": "LowSodiumCyberpunk", "count": 1}], "timestamps": [1704154591.0, 1695147315.0, 1736168260.0, 1666129368.0, 1551936113.0, 1759209877.0, 1622141098.0, 1757505706.0, 1576350101.0, 1738518543.0, 1757416853.0, 1756009189.0, 1738402045.0, 1751289945.0, 1725187051.0, 1736865257.0, 1756009363.0, 1578926927.0, 1712591927.0, 1742572582.0, 1734888751.0, 1643487997.0, 1754683724.0, 1740283200.0, 1629686611.0, 1743029609.0, 1756053318.0, 1744922769.0, 1750809622.0, 1735654495.0, 1742392315.0, 1693142659.0, 1754666829.0, 1620606259.0, 1736101513.0, 1738402066.0, 1463412763.0, 1396905376.0, 1705651878.0, 1751546261.0, 1756526904.0, 1758464879.0, 1608851610.0, 1450896747.0, 1725901955.0, 1749502377.0, 1755464127.0, 1544962225.0, 1712859300.0, 1755717290.0]}, "youtube_data": {"total_videos": 20, "total_views": 73185726, "avg_views": 3659286.3, "top_channels": [{"name": "Yellow Brick Cinema - Relaxing Music", "count": 5}, {"name": "Tim Ferriss", "count": 2}, {"name": "Christoph Magnussen", "count": 2}, {"name": "Soothing Relaxation", "count": 2}, {"name": "The Sound of Inner Peace", "count": 1}], "timestamps": [1528480803.0, 1737384404.0, 1758758392.0, 1724142020.0, 1490523463.0, 1568134667.0, 1689271202.0, 1736794441.0, 1761314407.0, 1621647901.0, 1618864021.0, 1612447210.0, 1698066003.0, 1616521537.0, 1592413205.0, 1438624721.0, 1317678652.0, 1455819088.0, 1705525094.0, 1399146953.0]}, "description": "Zen meditation, or zazen (meaning 'sitting meditation' in Japanese), is a meditative discipline at the heart of Zen Buddhist practice that involves sitting with an erect spine, crossed legs, and folded hands while suspending all judgmental thinking. The practice focuses on 'just sitting' or shikantaza, allowing words, ideas, and thoughts to pass by without getting involved in them, with the aim of giving insight into one's true nature."}, "children": []}, {"id": "chakra_meditation_2025-10-24T20:57:04.121101", "topic": "chakra meditation", "score": 94.64, "level": 1, "researched_at": "2025-10-24T20:57:04.121101", "output_file": "outputs\\topic-selection.json", "data": {"topic": "chakra meditation", "scores": {"composite_score": 94.64, "trends_score": 84.7, "reddit_score": 100.0, "youtube_score": 100.0, "confidence": 100, "sources_with_data": 3, "competition": {"trends_competition": 70, "reddit_competition": 71.5, "youtube_competition": 45.0, "overall_competition": 62.17, "competition_level": "high", "competition_emoji": "\ud83d\udfe0", "competition_description": "HIGH"}, "opportunity": {"opportunity_score": 35.8, "recommendation": "risky", "recommendation_emoji": "\ud83d\udd35", "recommendation_description": "RISKY - Need strong differentiation", "risk_level": "HIGH", "complexity": "COMPLEX", "complexity_description": "Need unique angle or superior quality", "demand_score": 94.645, "competition_score": 62.17}, "insights": ["\u2705 Strong validated demand", "\u26a0\ufe0f High competition - strong positioning required", "\u2705 Content gap - high views, few videos!"], "audience_size": 100432532, "zone": "viable", "richness": {"richness_score": 76.17, "richness_stars": 4, "sources_count": 3, "breakdown": {"trends": {"richness": 100, "data_points": 75, "average_interest": 77}, "reddit": {"richness": 28.5, "total_posts": 50, "avg_engagement": 964.06}, "youtube": {"richness": 100, "total_videos": 20, "avg_views": 4634216.45}}}, "recency": {"recency_score": 48.0, "recent_activity_pct": 50.0, "trend_momentum": "stable", "avg_content_age_days": 736.8, "recent_30_days": 9, "recent_90_days": 35, "total_content": 70}}, "trends_data": {"average_interest": 77, "peak_interest": 77, "trend_direction": "stable", "data_points": 75, "source": "agent"}, "reddit_data": {"total_posts": 50, "total_engagement": 48203, "avg_engagement": 964.06, "top_subreddits": [{"name": "Meditation", "count": 7}, {"name": "Chakras", "count": 4}, {"name": "KalMantra", "count": 3}, {"name": "energy_work", "count": 2}, {"name": "gatewaytapes", "count": 2}], "timestamps": [1609021555.0, 1756061678.0, 1735401796.0, 1734011557.0, 1759243465.0, 1675400915.0, 1744776387.0, 1719041308.0, 1755967958.0, 1753987460.0, 1756362387.0, 1731639362.0, 1759007265.0, 1757945455.0, 1755570615.0, 1761226695.0, 1584370803.0, 1759733971.0, 1756235667.0, 1756265022.0, 1758162780.0, 1756766531.0, 1757994974.0, 1748933429.0, 1758896146.0, 1758838045.0, 1753556709.0, 1757945546.0, 1757651589.0, 1758953965.0, 1758870245.0, 1758264292.0, 1474212473.0, 1754875524.0, 1757229395.0, 1756452795.0, 1757108104.0, 1756887916.0, 1753910940.0, 1742540474.0, 1756073272.0, 1756029907.0, 1679894086.0, 1755225948.0, 1733281858.0, 1754984999.0, 1754028823.0, 1721140692.0, 1754774356.0, 1748469338.0]}, "youtube_data": {"total_videos": 20, "total_views": 92684329, "avg_views": 4634216.45, "top_channels": [{"name": "Great Meditation", "count": 5}, {"name": "Jason Stephenson - Guided Sleep Meditation ", "count": 3}, {"name": "Nu Meditation Music", "count": 2}, {"name": "Michael Sealey", "count": 1}, {"name": "Yoga with Kassandra", "count": 1}], "timestamps": [1674468009.0, 1435602600.0, 1683018011.0, 1705485628.0, 1416719533.0, 1593511214.0, 1479229205.0, 1712935086.0, 1761206437.0, 1612145700.0, 1606730443.0, 1548545703.0, 1726923645.0, 1566219615.0, 1629363632.0, 1424970277.0, 1684442125.0, 1464921001.0, 1659369987.0, 1580048133.0]}, "description": "Chakra meditation is a mindfulness practice that focuses on the seven main energy centers (chakras) located along the spine from the base to the top of the head, each corresponding to specific physical, emotional, and spiritual aspects of being. The practice involves deep concentration, breathing exercises, visualization, affirmations, mudras, and mantras to activate, open, and balance these energy vortices in the subtle body."}, "children": []}]}]};
+
+        let currentChart = null;
+        let selectedTopics = new Set();
+
+        // Plugin to draw richness number inside bubbles
+        const centerTextPlugin = {
+            id: 'centerText',
+            afterDatasetsDraw(chart) {
+                const ctx = chart.ctx;
+                chart.data.datasets.forEach((dataset, i) => {
+                    const meta = chart.getDatasetMeta(i);
+                    if (!meta.hidden) {
+                        meta.data.forEach((element) => {
+                            const topicData = dataset.topicData;
+                            const richness = topicData?.richness?.richness_stars || topicData?.richness_stars || 5;
+                            const {x, y} = element.getCenterPoint();
+
+                            // White number with drop shadow for maximum contrast
+                            ctx.save();
+
+                            // Draw drop shadow for better visibility
+                            ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+                            ctx.shadowBlur = 4;
+                            ctx.shadowOffsetX = 2;
+                            ctx.shadowOffsetY = 2;
+
+                            ctx.font = 'bold 20px Arial';
+                            ctx.fillStyle = 'white';
+                            ctx.textAlign = 'center';
+                            ctx.textBaseline = 'middle';
+                            ctx.fillText(richness, x, y);
+                            ctx.restore();
+                        });
+                    }
+                });
+            }
+        };
+
+        // Plugin to draw clock-ring recency visualization around bubbles
+        const clockRingPlugin = {
+            id: 'clockRing',
+            afterDatasetsDraw(chart) {
+                const ctx = chart.ctx;
+                chart.data.datasets.forEach((dataset, i) => {
+                    const meta = chart.getDatasetMeta(i);
+                    if (!meta.hidden) {
+                        meta.data.forEach((element) => {
+                            const topicData = dataset.topicData;
+                            const recencyScore = topicData?.recency?.recency_score || topicData?.recency_score || 0;
+                            const {x, y} = element.getCenterPoint();
+                            const radius = element.options.radius + 3; // Ring outside bubble
+                            const ringWidth = 5.5;
+
+                            // Calculate fill percentage (0-100 maps to 0-360 degrees)
+                            const fillAngle = (recencyScore / 100) * 2 * Math.PI;
+
+                            ctx.save();
+                            ctx.lineWidth = ringWidth;
+
+                            // Draw empty ring (20% opacity purple) - full circle
+                            ctx.beginPath();
+                            ctx.arc(x, y, radius, 0, 2 * Math.PI);
+                            ctx.strokeStyle = 'rgba(124, 77, 255, 0.2)';
+                            ctx.stroke();
+
+                            // Draw filled arc (solid purple) - from 12 o'clock clockwise
+                            if (fillAngle > 0) {
+                                ctx.beginPath();
+                                // Start at -90 degrees (12 o'clock) and go clockwise
+                                ctx.arc(x, y, radius, -Math.PI / 2, -Math.PI / 2 + fillAngle);
+                                ctx.strokeStyle = '#7C4DFF';
+                                ctx.stroke();
+                            }
+
+                            ctx.restore();
+                        });
+                    }
+                });
+            }
+        };
+
+        // Initialize
+        window.addEventListener('load', () => {
+            collectAllNodeIds(treeData.root_nodes);
+            updateChartFromSelection();
+        });
+
+        function collectAllNodeIds(nodes) {
+            if (!nodes) return;
+            for (const node of nodes) {
+                selectedTopics.add(node.id);
+                if (node.children) {
+                    collectAllNodeIds(node.children);
+                }
+            }
+        }
+
+        function toggleTopicSelection(nodeId) {
+            const checkbox = document.getElementById(`check-${nodeId}`);
+            const isChecked = checkbox.checked;
+
+            // Update this node
+            if (isChecked) {
+                selectedTopics.add(nodeId);
+            } else {
+                selectedTopics.delete(nodeId);
+            }
+
+            // Find node and cascade to children
+            const node = findNodeById(treeData.root_nodes, nodeId);
+            if (node && node.children) {
+                cascadeCheckboxes(node.children, isChecked);
+            }
+
+            updateChartFromSelection();
+        }
+
+        function cascadeCheckboxes(nodes, checked) {
+            if (!nodes) return;
+            for (const node of nodes) {
+                const childCheckbox = document.getElementById(`check-${node.id}`);
+                if (childCheckbox) {
+                    childCheckbox.checked = checked;
+                    if (checked) {
+                        selectedTopics.add(node.id);
+                    } else {
+                        selectedTopics.delete(node.id);
+                    }
+                }
+                if (node.children) {
+                    cascadeCheckboxes(node.children, checked);
+                }
+            }
+        }
+
+        function updateChartFromSelection() {
+            const topicsToShow = [];
+            for (const nodeId of selectedTopics) {
+                const node = findNodeById(treeData.root_nodes, nodeId);
+                if (node && node.data) {
+                    topicsToShow.push(node.data);
+                }
+            }
+            // Show only checked topics (empty array = no bubbles if nothing checked)
+            updateChart(topicsToShow);
+        }
+
+        function selectNode(nodeId) {
+            const node = findNodeById(treeData.root_nodes, nodeId);
+            if (!node) return;
+
+            document.querySelectorAll('.node-item').forEach(el => el.classList.remove('selected'));
+            const selectedEl = document.querySelector(`[data-node-id="${nodeId}"]`);
+            if (selectedEl) selectedEl.classList.add('selected');
+
+            let topicsToShow = [];
+            if (node.children && node.children.length > 0) {
+                topicsToShow = node.children.map(child => child.data);
+            } else {
+                topicsToShow = [node.data];
+            }
+
+            updateChart(topicsToShow);
+        }
+
+        function findNodeById(nodes, id) {
+            if (!nodes) return null;
+            for (const node of nodes) {
+                if (node.id === id) return node;
+                if (node.children) {
+                    const found = findNodeById(node.children, id);
+                    if (found) return found;
+                }
+            }
+            return null;
+        }
+
+        function toggleChildren(nodeId) {
+            const childrenDiv = document.getElementById(`children-${nodeId}`);
+            const toggleBtn = document.getElementById(`toggle-${nodeId}`);
+            if (childrenDiv) {
+                const isExpanded = childrenDiv.classList.toggle('expanded');
+                if (toggleBtn) {
+                    toggleBtn.textContent = isExpanded ? '▼' : '▶';
+                }
+            }
+        }
+
+        function showInfo(topicData) {
+            const popup = document.getElementById('infoPopup');
+            const content = document.getElementById('popupContent');
+
+            const scores = topicData.scores || {};
+            const aiDesc = topicData.ai_description || topicData.description || scores.ai_description || "No description available";
+            const demandScore = scores.opportunity?.demand_score || scores.composite_score || 0;
+            const compScore = scores.opportunity?.competition_score || scores.competition?.overall_competition || 0;
+            const opportunityScore = scores.opportunity?.opportunity_score || 0;
+            const category = scores.opportunity?.recommendation || scores.zone || 'Unknown';
+            const audienceSize = scores.audience_size || 0;
+            const insights = scores.insights || [];
+
+            // Reddit data
+            const redditData = topicData.reddit_data || {};
+            const topSubreddits = redditData.top_subreddits || [];
+
+            // YouTube data
+            const youtubeData = topicData.youtube_data || {};
+            const topChannels = youtubeData.top_channels || [];
+
+            // Build insights HTML
+            const insightsHTML = insights.length > 0
+                ? insights.map(insight => `<div style="margin: 4px 0;">${insight}</div>`).join('')
+                : '<div style="color: #999;">No insights available</div>';
+
+            // Build Reddit communities HTML with clickable links
+            const redditHTML = topSubreddits.length > 0
+                ? topSubreddits.map(sub => `
+                    <div style="padding: 8px; background: #f5f5f5; border-radius: 4px; margin: 4px 0;">
+                        <a href="https://reddit.com/r/${sub.name}" target="_blank" style="color: #667eea; text-decoration: none;">
+                            r/${sub.name}
+                        </a> - ${sub.count} members
+                    </div>
+                `).join('')
+                : '<div style="color: #999; padding: 8px;">No Reddit data available</div>';
+
+            // Build YouTube channels HTML with clickable links (encoded for search)
+            const youtubeHTML = topChannels.length > 0
+                ? topChannels.map(channel => `
+                    <div style="padding: 8px; background: #f5f5f5; border-radius: 4px; margin: 4px 0;">
+                        <a href="https://youtube.com/results?search_query=${encodeURIComponent(channel.name)}" target="_blank" style="color: #667eea; text-decoration: none;">
+                            ${channel.name}
+                        </a> - ${channel.count} subscribers
+                    </div>
+                `).join('')
+                : '<div style="color: #999; padding: 8px;">No YouTube data available</div>';
+
+            content.innerHTML = `
+                <div style="max-height: calc(85vh - 100px); overflow-y: auto; padding-right: 8px;">
+                    <h3 style="margin: 0 0 12px 0; color: #667eea;">${topicData.topic}</h3>
+
+                    <div style="background: #e8f5e9; padding: 12px; border-radius: 6px; margin-bottom: 16px;">
+                        <div style="font-weight: 600; font-size: 18px;">Score: ${scores.composite_score?.toFixed(1) || 'N/A'}</div>
+                    </div>
+
+                    <div style="margin-bottom: 16px; padding: 12px; background: #f9f9f9; border-radius: 6px; border-left: 3px solid #667eea;">
+                        <div style="font-weight: 600; margin-bottom: 8px; color: #667eea;">AI Description:</div>
+                        <div style="font-size: 14px; line-height: 1.6; color: #333;">
+                            ${aiDesc}
+                        </div>
+                    </div>
+
+                    <div style="margin-bottom: 16px;">
+                        <div style="font-weight: 600; margin-bottom: 8px; display: flex; align-items: center;">
+                            <span style="margin-right: 6px;">📊</span> Key Insights
+                        </div>
+                        <div style="font-size: 14px; line-height: 1.6;">
+                            ${insightsHTML}
+                        </div>
+                    </div>
+
+                    <div style="margin-bottom: 16px;">
+                        <div style="font-weight: 600; margin-bottom: 8px; display: flex; align-items: center;">
+                            <span style="margin-right: 6px;">📈</span> Metrics
+                        </div>
+                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 12px;">
+                            <div style="padding: 12px; background: #f5f5f5; border-radius: 6px; border-left: 3px solid #667eea;">
+                                <div style="font-size: 12px; color: #666;">Demand Score</div>
+                                <div style="font-size: 20px; font-weight: 600;">${demandScore.toFixed(1)}</div>
+                            </div>
+                            <div style="padding: 12px; background: #f5f5f5; border-radius: 6px; border-left: 3px solid #ff9800;">
+                                <div style="font-size: 12px; color: #666;">Competition</div>
+                                <div style="font-size: 20px; font-weight: 600;">${compScore.toFixed(1)}</div>
+                            </div>
+                            <div style="padding: 12px; background: #f5f5f5; border-radius: 6px; border-left: 3px solid #4caf50;">
+                                <div style="font-size: 12px; color: #666;">Opportunity</div>
+                                <div style="font-size: 20px; font-weight: 600;">${opportunityScore.toFixed(1)}</div>
+                            </div>
+                        </div>
+                        <div style="padding: 12px; background: #f5f5f5; border-radius: 6px;">
+                            <div style="font-size: 12px; color: #666;">Audience Size</div>
+                            <div style="font-size: 18px; font-weight: 600;">${audienceSize.toLocaleString()}</div>
+                        </div>
+                    </div>
+
+                    <div style="margin-bottom: 16px;">
+                        <div style="font-weight: 600; margin-bottom: 8px; display: flex; align-items: center;">
+                            <span style="margin-right: 6px;">🔥</span> Top Reddit Communities
+                        </div>
+                        <div>
+                            ${redditHTML}
+                        </div>
+                    </div>
+
+                    <div style="margin-bottom: 8px;">
+                        <div style="font-weight: 600; margin-bottom: 8px; display: flex; align-items: center;">
+                            <span style="margin-right: 6px;">📺</span> Top YouTube Channels
+                        </div>
+                        <div>
+                            ${youtubeHTML}
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            popup.classList.add('active');
+            popup.style.left = '50%';
+            popup.style.top = '50%';
+            popup.style.transform = 'translate(-50%, -50%)';
+        }
+
+        function closePopup() {
+            document.getElementById('infoPopup').classList.remove('active');
+        }
+
+        function showTopicSummary(nodeId) {
+            const node = findNodeById(treeData.root_nodes, nodeId);
+            if (!node || !node.data) return;
+
+            showInfo(node.data);
+        }
+
+        function updateChart(topics) {
+            const ctx = document.getElementById('topicChart');
+            if (!ctx) return;
+
+            // Zone color mapping
+            const zoneColors = {
+                gold_mine: { bg: 'rgba(76, 175, 80, 0.6)', border: '#4CAF50' },
+                viable: { bg: 'rgba(33, 150, 243, 0.6)', border: '#2196F3' },
+                risky_niche: { bg: 'rgba(255, 152, 0, 0.6)', border: '#FF9800' },
+                risky: { bg: 'rgba(255, 152, 0, 0.6)', border: '#FF9800' },
+                avoid: { bg: 'rgba(244, 67, 54, 0.6)', border: '#f44336' }
+            };
+
+            // Create one dataset per topic with flattened data structure
+            const datasets = topics.map(topicData => {
+                const scores = topicData.scores || {};
+                const zone = scores.zone || scores.opportunity?.recommendation || 'viable';
+                const colors = zoneColors[zone] || zoneColors.viable;
+
+                // Flatten data for plugins
+                const flatTopic = {
+                    topic: topicData.topic,
+                    demand: scores.composite_score || 0,
+                    competition: scores.competition?.overall_competition || scores.opportunity?.competition_score || 0,
+                    opportunity: scores.opportunity?.opportunity_score || 0,
+                    audience_size: scores.audience_size || 0,
+                    zone: zone,
+                    confidence: scores.confidence || 100,
+                    richness_stars: scores.richness?.richness_stars || 5,
+                    richness_score: scores.richness?.richness_score || 100,
+                    richness_breakdown: scores.richness?.breakdown || {},
+                    recency_score: scores.recency?.recency_score || 0,
+                    recency_data: scores.recency || {}
+                };
+
+                return {
+                    label: flatTopic.topic,
+                    data: [{
+                        x: flatTopic.competition,
+                        y: flatTopic.demand,
+                        r: Math.sqrt(flatTopic.audience_size / 100000) + 15  // Bubble size scales with audience
+                    }],
+                    backgroundColor: colors.bg,
+                    borderColor: colors.border,
+                    borderWidth: 3,
+                    topicData: flatTopic
+                };
+            });
+
+            if (currentChart) {
+                currentChart.destroy();
+            }
+
+            currentChart = new Chart(ctx, {
+                type: 'bubble',
+                data: { datasets },
+                plugins: [centerTextPlugin, clockRingPlugin],
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    onClick: (event, elements) => {
+                        if (elements.length > 0) {
+                            const datasetIndex = elements[0].datasetIndex;
+                            showInfo(topics[datasetIndex]);
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const topic = context.dataset.topicData;
+                                    const stars = '⭐'.repeat(topic.richness_stars);
+                                    const breakdown = topic.richness_breakdown || {};
+                                    const recency = topic.recency_data || {};
+
+                                    let lines = [
+                                        `Topic: ${topic.topic}`,
+                                        `Demand: ${topic.demand.toFixed(1)}/100`,
+                                        `Competition: ${topic.competition.toFixed(1)}/100`,
+                                        `Opportunity: ${topic.opportunity.toFixed(1)}/100`,
+                                        `Audience: ${topic.audience_size.toLocaleString()}`,
+                                        ``,
+                                        `Data Richness: ${stars} (${topic.richness_stars}/5)`
+                                    ];
+
+                                    // Add breakdown if available
+                                    if (breakdown.trends) {
+                                        lines.push(`├─ Trends: ${breakdown.trends.data_points} pts : ${breakdown.trends.average_interest.toFixed(1)} interest`);
+                                    }
+                                    if (breakdown.reddit) {
+                                        lines.push(`├─ Reddit: ${breakdown.reddit.total_posts} posts : ${breakdown.reddit.avg_engagement.toFixed(0)} engage`);
+                                    }
+                                    if (breakdown.youtube) {
+                                        lines.push(`└─ YouTube: ${breakdown.youtube.total_videos} videos : ${breakdown.youtube.avg_views.toLocaleString()} views`);
+                                    }
+
+                                    // Add recency information
+                                    if (recency.recency_score !== undefined) {
+                                        lines.push(``);
+                                        lines.push(`Recency/Urgency: ${recency.recency_score.toFixed(1)}/100`);
+                                        if (recency.recent_90_days > 0) {
+                                            lines.push(`├─ Recent Activity: ${recency.recent_activity_pct.toFixed(1)}% in 90d`);
+                                            lines.push(`├─ Last 30 days: ${recency.recent_30_days} items`);
+                                            lines.push(`├─ Trend: ${recency.trend_momentum}`);
+                                            lines.push(`└─ Avg Age: ${recency.avg_content_age_days.toFixed(0)} days`);
+                                        }
+                                    }
+
+                                    lines.push(``);
+                                    lines.push(`Zone: ${topic.zone.replace('_', ' ').toUpperCase()}`);
+
+                                    return lines;
+                                }
+                            }
+                        },
+                        legend: { display: false },
+                        annotation: {
+                            annotations: {
+                                verticalLine: {
+                                    type: 'line',
+                                    xMin: 50,
+                                    xMax: 50,
+                                    borderColor: 'rgba(0, 0, 0, 0.3)',
+                                    borderWidth: 2,
+                                    borderDash: [5, 5]
+                                },
+                                horizontalLine: {
+                                    type: 'line',
+                                    yMin: 50,
+                                    yMax: 50,
+                                    borderColor: 'rgba(0, 0, 0, 0.3)',
+                                    borderWidth: 2,
+                                    borderDash: [5, 5]
+                                }
+                            }
+                        },
+                        zoom: {
+                            zoom: {
+                                wheel: {
+                                    enabled: true,
+                                    speed: 0.1
+                                },
+                                pinch: {
+                                    enabled: true
+                                },
+                                mode: 'xy'
+                            },
+                            pan: {
+                                enabled: true,
+                                mode: 'xy'
+                            },
+                            limits: {
+                                x: {min: 0, max: 120},
+                                y: {min: 0, max: 120}
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Competition Level →',
+                                font: { size: 14, weight: 'bold' }
+                            },
+                            min: 0,
+                            max: 120,
+                            ticks: {
+                                stepSize: 10,
+                                callback: function(value) {
+                                    if (value > 100) return '';
+                                    return Math.round(value);
+                                }
+                            },
+                            grid: {
+                                color: function(context) {
+                                    return context.tick.value <= 100 ? 'rgba(0, 0, 0, 0.1)' : 'transparent';
+                                }
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Demand Score ↑',
+                                font: { size: 14, weight: 'bold' }
+                            },
+                            min: 0,
+                            max: 120,
+                            ticks: {
+                                stepSize: 10,
+                                callback: function(value) {
+                                    if (value > 100) return '';
+                                    return Math.round(value);
+                                }
+                            },
+                            grid: {
+                                color: function(context) {
+                                    return context.tick.value <= 100 ? 'rgba(0, 0, 0, 0.1)' : 'transparent';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function getColorForCategory(category) {
+            const colors = {
+                'gold-mine': 'rgba(76, 175, 80, 0.6)',
+                'viable': 'rgba(33, 150, 243, 0.6)',
+                'risky': 'rgba(255, 152, 0, 0.6)',
+                'avoid': 'rgba(244, 67, 54, 0.6)'
+            };
+            return colors[category] || 'rgba(158, 158, 158, 0.6)';
+        }
+    </script>
+</body>
+</html>

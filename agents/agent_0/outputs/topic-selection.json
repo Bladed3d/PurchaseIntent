@@ -1,0 +1,23 @@
+{
+  "selected_topic": "romance novels",
+  "confidence": 70,
+  "composite_score": 62.0,
+  "competition_score": 45.3,
+  "opportunity_score": 33.91,
+  "audience_size": 6522063,
+  "zone": "gold_mine",
+  "sources_analyzed": 2,
+  "all_topics": [
+    {
+      "rank": 1,
+      "topic": "romance novels",
+      "demand": 62.0,
+      "competition": 45.3,
+      "opportunity": 33.91,
+      "zone": "gold_mine",
+      "confidence": 70
+    }
+  ],
+  "timestamp": "2025-10-24T01:28:45.620437",
+  "agent": "Agent0_TopicResearch"
+}

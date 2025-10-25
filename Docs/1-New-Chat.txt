@@ -1,0 +1,5 @@
+Use session-summarizer agent to process unprocessed context files and then read the file.
+Read:
+  - Docs/PRD-Purchase-Intent-System.md
+  - Docs/SSR-Implementation-Summary.md
+  

@@ -21,7 +21,7 @@ class Agent0Config:
 
     # Rate Limiting
     RATE_LIMIT_DELAY = float(os.getenv('AGENT_0_RATE_LIMIT_DELAY', '2.5'))
-    GOOGLE_TRENDS_DELAY = 5.0  # pytrends requires 5+ seconds
+    GOOGLE_TRENDS_DELAY = 12.0  # Increased to 12s to avoid 429 rate limits (was 5.0)
 
     # Query Limits
     MAX_TOPICS = int(os.getenv('AGENT_0_MAX_TOPICS', '10'))
@@ -46,6 +46,7 @@ class Agent0Config:
     LED_SCORING_START = 540
     LED_DASHBOARD_START = 550
     LED_OUTPUT_START = 560
+    LED_DRILL_DOWN_START = 570  # Drill-down navigation system (570-589)
 
     @classmethod
     def validate(cls):

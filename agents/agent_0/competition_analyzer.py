@@ -94,6 +94,11 @@ class CompetitionAnalyzer:
         - Established subreddit communities
         - Saturated with solution discussions
 
+        Uses granular metrics to avoid quantization:
+        - Engagement rate (avg_engagement per post)
+        - Subreddit concentration index
+        - Post volume density
+
         Returns: 0-100 (higher = more competitive)
         """
         total_posts = reddit_data.get('total_posts', 0)
@@ -103,42 +108,77 @@ class CompetitionAnalyzer:
         if total_posts == 0:
             return 50.0  # Unknown - assume moderate
 
-        # High post count can indicate either:
-        # 1. High demand (good) + low competition (few solutions)
-        # 2. Saturated market (many existing solutions)
+        # GRANULAR METRIC 1: Engagement Rate Per Post
+        # This varies continuously even when total_posts is always ~50
+        # High engagement/post = passionate community (could be low OR high competition)
+        # We interpret high engagement as problem-focused (low competition)
+        engagement_per_post = avg_engagement / max(total_posts, 1)
 
-        # Use engagement as proxy for competition level
-        # Very high engagement often means problem posts (low competition)
-        # Moderate engagement often means solution posts (high competition)
-
-        if avg_engagement > 5000:
-            # Very high engagement = passionate pain points = low competition
-            base_competition = 25
-        elif avg_engagement > 1000:
-            # High engagement = active discussions = moderate competition
-            base_competition = 40
-        elif avg_engagement > 100:
-            # Moderate engagement = some solutions = moderate-high competition
-            base_competition = 60
+        if engagement_per_post > 200:
+            # Very high engagement per post = passionate pain points = low competition
+            engagement_score = 20
+        elif engagement_per_post > 100:
+            # High engagement per post = active discussions = moderate competition
+            engagement_score = 35
+        elif engagement_per_post > 50:
+            # Moderate engagement per post = some solutions = moderate-high competition
+            engagement_score = 55
+        elif engagement_per_post > 20:
+            # Low-moderate engagement = maturing market
+            engagement_score = 70
         else:
-            # Low engagement = either niche or saturated = assume moderate
-            base_competition = 50
+            # Low engagement per post = either niche or saturated
+            engagement_score = 60
 
-        # Adjust for subreddit concentration
-        # Many subreddits = broad appeal = likely more competition
-        # Few subreddits = niche = less competition
+        # GRANULAR METRIC 2: Subreddit Concentration Index
+        # Spread across many subreddits = mainstream/competitive
+        # Concentrated in few = niche opportunity
         subreddit_count = len(top_subreddits)
-        if subreddit_count >= 5:
-            base_competition += 15  # Spread across many communities
-        elif subreddit_count <= 2:
-            base_competition -= 10  # Concentrated niche
+        if subreddit_count == 0:
+            concentration_score = 50  # No data
+        elif subreddit_count >= 5:
+            # Spread across many communities = mainstream appeal = higher competition
+            concentration_score = 75
+        elif subreddit_count >= 3:
+            # Moderate spread = growing topic
+            concentration_score = 55
+        elif subreddit_count >= 2:
+            # Focused but not isolated = niche opportunity
+            concentration_score = 35
+        else:  # 1 subreddit
+            # Highly concentrated = very niche = low competition
+            concentration_score = 25
 
-        # Post volume adjustment
-        # Very high post count can indicate saturation
-        if total_posts >= 100:
-            base_competition += 10
-        elif total_posts >= 50:
-            base_competition += 5
+        # GRANULAR METRIC 3: Post Volume Density
+        # Post count relative to engagement
+        # Many posts + high engagement = active market (more competitive)
+        # Many posts + low engagement = saturated (very competitive)
+        if total_posts > 0 and avg_engagement > 0:
+            density_ratio = total_posts / (avg_engagement / 100)  # Normalized
+            if density_ratio > 5:
+                # High density = saturated
+                volume_score = 85
+            elif density_ratio > 2:
+                # Moderate density = competitive
+                volume_score = 65
+            elif density_ratio > 0.5:
+                # Low density = healthy
+                volume_score = 45
+            else:
+                # Very low density = potential gap
+                volume_score = 30
+        else:
+            volume_score = 50
+
+        # Weighted composite
+        # Engagement: 40% (primary signal)
+        # Concentration: 35% (market spread)
+        # Volume: 25% (saturation check)
+        base_competition = (
+            engagement_score * 0.40 +
+            concentration_score * 0.35 +
+            volume_score * 0.25
+        )
 
         return min(max(base_competition, 0), 100.0)
 
@@ -158,6 +198,11 @@ class CompetitionAnalyzer:
         - Consistent upload schedule
         - Established creators dominating
 
+        Uses granular metrics to avoid quantization:
+        - Engagement rate (views per video)
+        - Channel diversity index
+        - View distribution variance
+
         Returns: 0-100 (higher = more competitive)
         """
         total_videos = youtube_data.get('total_videos', 0)
@@ -169,36 +214,63 @@ class CompetitionAnalyzer:
             # Combined with demand score will determine
             return 30.0  # Assume low competition (potential gap)
 
-        # Video count assessment
-        if total_videos >= 100:
-            base_competition = 75  # Very saturated
-        elif total_videos >= 50:
-            base_competition = 60  # Saturated
-        elif total_videos >= 20:
-            base_competition = 40  # Moderate
-        else:
-            base_competition = 20  # Low saturation
+        # GRANULAR METRIC 1: Engagement Rate (views per video)
+        # This varies continuously even when total_videos is always 20
+        engagement_rate = avg_views / max(total_videos, 1)
 
-        # View count assessment
-        # High views per video despite few videos = opportunity gap
-        # Low views despite many videos = saturated market
-        if total_videos < 30 and avg_views > 500000:
-            # Gap: High demand but few videos!
-            base_competition -= 20
-        elif total_videos > 50 and avg_views < 50000:
-            # Saturated: Many videos but low engagement
-            base_competition += 15
+        # Scale engagement rate to competition score
+        # Low views/video = low competition (amateur content)
+        # High views/video = high competition (professional quality)
+        if engagement_rate > 1000000:  # 1M+ views per video
+            engagement_score = 85  # Very professional/competitive
+        elif engagement_rate > 500000:  # 500K+ views per video
+            engagement_score = 70
+        elif engagement_rate > 100000:  # 100K+ views per video
+            engagement_score = 55
+        elif engagement_rate > 50000:   # 50K+ views per video
+            engagement_score = 40
+        elif engagement_rate > 10000:   # 10K+ views per video
+            engagement_score = 25
+        else:  # < 10K views per video
+            engagement_score = 15  # Low competition (amateur)
 
-        # Channel concentration
-        # One dominant channel = potential gap for new entrant
-        # Many competing channels = saturated
+        # GRANULAR METRIC 2: Channel Diversity Index
+        # More unique channels = more competitive
         channel_count = len(top_channels)
-        if channel_count >= 5:
-            # Diverse channels = competitive market
-            base_competition += 10
-        elif channel_count <= 2:
-            # Dominated by 1-2 channels = opportunity for alternative perspective
-            base_competition -= 5
+        if channel_count == 0:
+            diversity_score = 20
+        else:
+            # Normalize: 1 channel = low competition, 5+ = high competition
+            diversity_ratio = channel_count / max(total_videos, 1)
+            diversity_score = min(diversity_ratio * 100, 100)
+
+        # GRANULAR METRIC 3: Content Saturation Score
+        # Video count normalized (but now just one component)
+        if total_videos >= 100:
+            saturation_score = 90
+        elif total_videos >= 50:
+            saturation_score = 70
+        elif total_videos >= 20:
+            saturation_score = 50
+        elif total_videos >= 10:
+            saturation_score = 30
+        else:
+            saturation_score = 15
+
+        # Weighted composite (emphasize engagement over count)
+        # Engagement: 50% (varies most, breaks quantization)
+        # Diversity: 30% (varies based on channels)
+        # Saturation: 20% (count-based, less variable)
+        base_competition = (
+            engagement_score * 0.50 +
+            diversity_score * 0.30 +
+            saturation_score * 0.20
+        )
+
+        # Opportunity gap detection
+        # High views per video + few videos = opportunity gap
+        if total_videos < 30 and engagement_rate > 500000:
+            base_competition -= 15  # Significant opportunity
 
         return min(max(base_competition, 0), 100.0)
 
@@ -341,6 +413,43 @@ class CompetitionAnalyzer:
         })
 
         return result
+
+    def calculate_audience_size(
+        self,
+        trends_data: Dict,
+        reddit_data: Dict,
+        youtube_data: Dict
+    ) -> int:
+        """
+        Calculate total addressable market size (audience reach)
+
+        This metric shows market scale, not just demand score.
+        Used for bubble sizing in visualization.
+
+        Formula:
+        - Google Trends average interest × 100,000 (represents search volume proxy)
+        - Reddit total engagement (posts × avg score)
+        - YouTube total views
+
+        Returns: Integer representing estimated audience size
+        """
+        # Google Trends: Average interest as search volume proxy
+        trends_interest = trends_data.get('average_interest', 0)
+        trends_audience = int(trends_interest * 100000)  # Scale factor
+
+        # Reddit: Engagement metric (posts × average score)
+        reddit_posts = reddit_data.get('total_posts', 0)
+        reddit_engagement = reddit_data.get('avg_engagement', 0)
+        reddit_audience = int(reddit_posts * reddit_engagement)
+
+        # YouTube: Total views across all videos
+        youtube_views = youtube_data.get('total_videos', 0) * youtube_data.get('avg_views', 0)
+        youtube_audience = int(youtube_views)
+
+        # Total addressable audience (sum of all channels)
+        total_audience = trends_audience + reddit_audience + youtube_audience
+
+        return max(total_audience, 1000)  # Minimum 1K for visibility
 
     def get_competitive_insights(
         self,

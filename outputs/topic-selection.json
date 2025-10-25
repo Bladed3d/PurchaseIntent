@@ -1,0 +1,16 @@
+{
+  "selected_topic": "meditation",
+  "confidence": 100,
+  "composite_score": 98.5,
+  "sources_analyzed": 3,
+  "all_topics": [
+    {
+      "rank": 1,
+      "topic": "meditation",
+      "score": 98.5,
+      "confidence": 100
+    }
+  ],
+  "timestamp": "2025-10-25T01:28:57.320570",
+  "agent": "Agent0_TopicResearch"
+}

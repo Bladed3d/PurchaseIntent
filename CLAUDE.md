@@ -1,288 +1,147 @@
-# Purchase-Intent - Development Instructions
+# Purchase-Intent Development Instructions
 
-## 🚨 CRITICAL: NEVER SUGGEST PAID CLAUDE API
+## 🚨 TOP 5 CRITICAL RULES
 
-**USER HAS CLAUDE PRO SUBSCRIPTION - NO ADDITIONAL COSTS ALLOWED**
-
-❌ **ABSOLUTELY FORBIDDEN - NEVER suggest:**
-- "Use Claude API"
-- "Call Claude API directly"
-- "Integrate with Anthropic API"
-- "Use Claude via API"
-- ANY solution that requires paying for API access beyond existing subscription
-
-✅ **ALLOWED approaches:**
-- Use Task tool to launch agents (included in subscription)
-- Manual workflows where Claude assists during conversation
-- File-based communication between Python and Claude
-- Any solution that uses ONLY the subscription features
-
-**RATIONALE:** User pays for monthly subscription. Suggesting paid API is redundant and wastes user's time explaining this repeatedly.
+1. **FAIL LOUDLY** - Never create fallback code. Raise exceptions immediately. The user is the fallback.
+2. **NO PAID APIs** - User has Claude Pro subscription. Use Task tool, not Anthropic API. No additional costs.
+3. **ASK BEFORE AUTOMATING** - Never create slash commands, agents, or workflows without explicit user approval.
+4. **START SIMPLE** - Edit existing files before creating new ones. Minimal solution first, add complexity only when needed.
+5. **COMMIT OFTEN** - Git protects work. Commit before experiments, risky changes, or major edits.
 
 ---
 
-## Project Mission
-Build a clean, modern application that detects and analyzes purchase intent signals using AI-powered analysis.
+## Development Rules (Structured)
 
-## Technical Standards & Stack
-
-### Core Technology Stack:
-- **React 18** - UI framework
-- **TypeScript** - Type safety
-- **Node.js** - Backend services
-
-### Architecture Requirements:
-- **Components < 400 lines** - Keep everything maintainable
-- **LED Breadcrumbs** - Instrument all critical operations (Purchase Intent: 500-4599, General: 5000-9099)
-- **Quality first** - Robust, production-ready code only
-
-## Available Agents
-- **breadcrumbs-agent**: Adds LED infrastructure to functional code
-- **lead-programmer**: Implements features with LED instrumentation
-
-## Modular Architecture Standards
-**CRITICAL: All code must follow strict modularization to prevent bloat**
-
-**File Size Limits (STRICTLY ENFORCED):**
-- Components: < 400 lines maximum
-- Services: < 300 lines maximum
-- Main app files: < 200 lines (orchestration only)
-- Utilities: < 150 lines maximum
-
-**Directory Structure:**
-```
-src/
-├── components/
-│   ├── common/           # Reusable UI < 100 lines
-│   └── intent/           # Intent detection UI < 400 lines
-├── services/
-│   ├── detection/        # Intent detection logic
-│   ├── analytics/        # Analytics processing
-│   └── storage/          # Data persistence
-├── hooks/                # Custom React hooks < 100 lines
-├── types/                # TypeScript definitions
-└── lib/                  # Utilities and breadcrumb system
+```json
+{
+  "forbidden": {
+    "fallback_code": "No try/except that masks errors. No .get(key, default) that hides missing data. Fail loudly.",
+    "paid_apis": "No Anthropic API, OpenAI API, or any paid service. Use Task tool for agents.",
+    "silent_automation": "No unprompted slash commands, agents, or workflow changes. Always ask first.",
+    "over_engineering": "No new files without justification. No complex architectures for simple tasks.",
+    "fake_data": "No hard-coded mock data in application code. Test data goes in separate fixtures.",
+    "default_values": "No .get(key, 0) or similar that makes missing data look real. Require the data.",
+    "process_kills": "Never taskkill by process name (node.exe, electron.exe). Use specific PIDs only."
+  },
+  "required": {
+    "fail_loudly": "Raise ValueError/KeyError immediately when data is missing or APIs fail.",
+    "ask_before_create": "Propose slash commands/automation, explain what it does, wait for 'yes'.",
+    "start_simple": "Can we delete code? Edit one file? Reuse existing patterns? Do that first.",
+    "commit_before_risk": "git commit before experiments, large edits (>200 lines), or git checkout.",
+    "led_breadcrumbs": "Instrument critical operations. Use breadcrumbs to debug, not user.",
+    "modular_code": "Components <400 lines, Services <300 lines, Utils <150 lines.",
+    "one_responsibility": "One file = one job. No business logic in UI components."
+  },
+  "workflow": {
+    "planning_docs": "First draft: <100 lines, bullet points only. Show user FIRST. Iterate up, not down.",
+    "git_commits": "Commit message: Brief title + bullet points + Co-Authored-By: Claude",
+    "error_handling": "Clear error messages. Tell user what failed and what to check (API key, quota, file path).",
+    "debugging": "Claude reads console/logs using Grep, not user. Present findings with LED breadcrumb numbers."
+  }
+}
 ```
 
-**Separation Rules:**
-1. ONE RESPONSIBILITY per file
-2. NO business logic in UI components
-3. Services handle data/state management
-4. Components only handle presentation
-5. Hooks bridge services and components
-6. Communication: Service → Hook → Component
+---
 
-## ANTI-OVER-ENGINEERING PROTOCOL
-**CRITICAL: Cost-conscious development - every token matters**
+## Project Context
 
-### Start Simple, Add Complexity Only When Needed
-**Default approach: Minimal viable solution**
+**Mission:** AI-powered purchase intent detection system
+**Stack:** Python (data research), React/TypeScript (future UI)
+**GitHub:** https://github.com/Bladed3d/PurchaseIntent.git
+**Branch:** main
 
-Before implementing ANY feature or creating ANY document:
+**Agents Available:**
+- `lead-programmer`: Feature implementation with LED instrumentation
+- `breadcrumbs-agent`: Add LED debugging infrastructure
 
-1. **Deletion First**: Can we achieve this by REMOVING or simplifying existing code?
-2. **One File Challenge**: Can this be done by editing a SINGLE existing file?
-3. **Pattern Detective**: Find similar patterns already in the codebase - reuse them
-4. **No New Files Without Strong Justification**: Prefer editing over creating
+**LED Breadcrumb Ranges:**
+- 500-599: Agent 0 (Topic Research)
+- 1500-1599: Agent 1 (Product Research)
+- 2500-2599: Agent 2 (Demographics)
+- 3500-3599: Agent 3 (Persona Generator)
+- 4500-4599: Agent 4 (Intent Simulator)
 
-### The PRD/Documentation Rule
-When creating any planning document:
-- **First draft**: Single page, bullet points, essentials only (< 100 lines)
-- **Show minimal version FIRST**: Let user review before expanding
-- **Iterate UP not DOWN**: Add detail only when user explicitly requests it
-- **Never spend 30+ minutes on a planning document**
+---
 
-**Example of what NOT to do:**
-- ❌ Creating a 4-agent architecture document that takes 30+ minutes
-- ❌ Adding detailed sections the user didn't request
-- ❌ Building enterprise-scale solutions for simple apps
+## Code Examples
 
-**What TO do instead:**
-- ✅ Simple bullet list (5 minutes max)
-- ✅ User reviews and provides feedback
-- ✅ Expand only requested sections
-- ✅ Keep it under 200 lines unless explicitly asked for more
-
-### Complexity Approval Required
-**These require explicit user approval BEFORE implementing:**
-- Creating new files (explain why editing existing files won't work)
-- Introducing new patterns not found in codebase
-- Adding new dependencies or frameworks
-- Architectural changes or refactoring
-- Any solution that touches > 3 files
-
-### Quality ≠ Complexity
-- Production-ready does NOT mean complex architecture
-- Simple, tested code > elaborate abstractions
-- Every line of code = future maintenance burden
-- Fewer files = fewer bugs = lower cost
-
-## Development Rules
-✅ **Always do:**
-- **START WITH THE SIMPLEST SOLUTION THAT WORKS**
-- Add LED breadcrumbs to critical operations
-- Use TypeScript for type safety
-- Test thoroughly before claiming complete
-- Build for maintainability
-- **Follow modular architecture strictly**
-- **Reuse existing patterns from the codebase**
-
-❌ **Never do:**
-- Over-engineer solutions (bicycle not spaceship)
-- Create components over 400 lines
-- Skip error handling
-- Compromise quality for speed
-- **Put business logic in UI components**
-- **Create monolithic files**
-- **Hard-code fake/mock data directly into application code**
-- **Create new files without strong justification**
-
-## LED Breadcrumb System - Debugging Protocol
-
-### 🚨 CRITICAL: LED Breadcrumbs Are Claude's Responsibility
-
-**The LED breadcrumb system exists specifically to enable Claude to debug problems autonomously.**
-
-❌ **NEVER tell the user to:**
-- "Monitor the console output"
-- "Watch the LED breadcrumbs"
-- "Check the terminal for breadcrumb numbers"
-- "Look at the console to see what's happening"
-
-✅ **Claude MUST:**
-- **Read the console output yourself** using Playwright or browser tools
-- **Grep log files** for specific breadcrumb ranges when debugging
-- **Analyze breadcrumb sequences** to identify where processes fail
-- **Use breadcrumb numbers** to pinpoint exact failure locations
-- **Present findings to user** with specific breadcrumb evidence
-
-### Why This Matters:
-The console output contains too much data for humans to monitor effectively. LED breadcrumbs (Purchase Intent: 500-4599, General: 5000-9099) are designed to be machine-readable so Claude can:
-1. Quickly filter logs for relevant operations
-2. Identify exactly which step in a process failed
-3. Trace execution flow through complex operations
-4. Provide precise debugging information to the user
-
-### Debugging Workflow:
-When investigating an issue:
-1. **Use Playwright/browser tools** to capture console output
-2. **Grep for breadcrumb ranges** relevant to the problem area
-3. **Analyze the sequence** to find where execution stopped or errored
-4. **Report findings** to user with specific breadcrumb numbers and what they mean
-5. **Propose fixes** based on breadcrumb evidence
-
-**Example:**
-```
-User: "The intent detection isn't working"
-
-Claude: [Uses browser tools to check console]
-Claude: "I found the issue. LED breadcrumb 2045 fired successfully
-        (data validation complete), but breadcrumb 2050 (starting
-        intent analysis) never appeared. This indicates the problem is
-        in the transition between validation and analysis processing.
-        Let me check the validation completion handler..."
+### ❌ WRONG - Silent Fallback
+```python
+try:
+    data = api.fetch()
+except:
+    data = hardcoded_patterns()  # User never knows API failed!
 ```
 
-### LED Breadcrumb Ranges
-
-**Purchase Intent System (Agents 0-4): 500-4599**
-- **500-599**: Agent 0 - Topic Research Agent
-- **1500-1599**: Agent 1 - Product Researcher
-- **2500-2599**: Agent 2 - Demographics Analyst
-- **3500-3599**: Agent 3 - Persona Generator
-- **4500-4599**: Agent 4 - ParaThinker Intent Simulator
-
-**General Application (if needed for other features): 5000-9099**
-- **5000-5099**: Analytics and reporting
-- **6000-6099**: API integration
-- **7000-7099**: UI interactions and state management
-- **8000-8099**: Error handling and recovery
-- **9000-9099**: Testing and validation
-
-## Data Policy
-**CRITICAL: NO FAKE DATA IN APPLICATION CODE**
-
-✅ **Acceptable for testing/development:**
-- External test data files in `tests/fixtures/` or `docs/test-data/`
-- Separate mock data services that can be easily disabled/removed
-- User-supplied test data during development sessions
-- Environment-based data loading (development vs production)
-
-❌ **NEVER acceptable:**
-- Hard-coded mock data directly in components or services
-- Fake user data embedded in application logic
-- Sample data that ships with production code
-- Demo content that cannot be easily removed
-
-**Rationale:** Hard-coded fake data creates maintenance debt, confuses users, and can accidentally ship to production. Always keep test data separate from application code.
-
-## Version Control & Git Workflow
-**CRITICAL: This project uses git for version control**
-
-### GitHub Repository
-- **Remote:** https://github.com/Bladed3d/PurchaseIntent.git
-- **Branch:** main
-- **Status:** Active, all work must be committed
-
-### Document Versioning Protocol
-When user asks to "version" a document:
-1. ✅ **CORRECT:** Create new file with version suffix
-   - Example: `design-v1.md` → keep original, create `design-v2.md`
-   - OR: `design.md` → keep original, create `design-2024-10-22.md`
-2. ❌ **WRONG:** Edit the original file in place
-   - Never overwrite original documents
-   - Never just update version number in metadata
-
-### Git Commit Workflow
-**Before making significant changes:**
-1. Check git status: `git status`
-2. Create feature branch if needed: `git checkout -b feature/agent-0`
-3. Make changes
-4. Stage files: `git add [files]`
-5. Commit with descriptive message
-6. Push to GitHub: `git push origin [branch]`
-
-**Commit message format:**
-```
-Brief description of changes (50 chars max)
-
-- Bullet point of what changed
-- Why the change was needed
-- Any breaking changes
-
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
-
-Co-Authored-By: Claude <noreply@anthropic.com>
+### ✅ CORRECT - Fail Loudly
+```python
+data = api.fetch()
+if not data:
+    raise ValueError("API returned no data. Check YOUTUBE_API_KEY and quota at console.cloud.google.com")
 ```
 
-### What to Commit
-✅ **Always commit:**
-- Source code files
+### ❌ WRONG - Hidden Missing Data
+```python
+subscribers = channel.get('subscriberCount', 0)  # 0 looks real!
+```
+
+### ✅ CORRECT - Require Data
+```python
+subscribers = channel['subscriberCount']  # KeyError if missing - GOOD!
+if subscribers == 0:
+    raise ValueError(f"Channel {channel_id} has 0 subscribers - invalid data")
+```
+
+---
+
+## File Size Limits
+
+| Type | Max Lines | Notes |
+|------|-----------|-------|
+| Components | 400 | UI presentation only |
+| Services | 300 | Business logic/data |
+| Main files | 200 | Orchestration only |
+| Utilities | 150 | Helper functions |
+
+---
+
+## Git Workflow
+
+**Always commit:**
+- Source code
 - Documentation (Docs/*.md)
-- Architecture designs
-- Configuration files (CLAUDE.md, .claude/*)
-- Session handoff files (Context/**/HANDOFF-*.md)
+- Config (CLAUDE.md, .claude/*)
+- Handoff files (Context/**/HANDOFF-*.md)
 
-❌ **Never commit:**
-- API keys or secrets (.env files)
-- Large session logs (Context/**/session-*.md)
-- Temporary data (temp/, cache/)
-- Node modules or Python venv
-- Personal notes with sensitive info
+**Never commit:**
+- API keys (.env)
+- Session logs (Context/**/session-*.md)
+- Cache/temp data
+- node_modules or Python venv
 
-See `.gitignore` for complete list.
+**Before risky changes:**
+```bash
+git add .
+git commit -m "WIP: Working state before experiment"
+```
 
-### Critical Lesson
-**Why this matters:** In session 2025-10-22, a document (4-agents-design.md v1.1) was overwritten instead of versioned, destroying original work. Git prevents this by:
-- Tracking all changes
-- Allowing reversion to any previous state
-- Preserving history even when files are edited
+---
 
-**Always commit before major changes** to create recovery points.
+## Anti-Patterns to Avoid
+
+1. **"I'll create a fallback..."** → NO. Fail loudly instead.
+2. **"Let me add a try/except..."** → Only if you re-raise or log for debugging.
+3. **"I'll create a new file for this..."** → Can you edit existing file instead?
+4. **"Let me build a slash command for you..."** → Ask first. User might prefer manual control.
+5. **"The API failed, so I'll use patterns..."** → NO. Tell user API failed and stop.
+
+---
 
 ## Success Criteria
-- Clean, maintainable codebase that any developer can understand
-- Comprehensive LED breadcrumb coverage for debugging
-- Production-ready with robust error handling
-- Zero hard-coded fake data in production code
-- **All significant work committed to git with clear history**
+
+✅ Code fails fast with clear error messages
+✅ No hidden fallbacks or silent degradation
+✅ User knows immediately when something breaks
+✅ Simple solutions that edit existing files
+✅ All work committed to git regularly
+✅ LED breadcrumbs for autonomous debugging

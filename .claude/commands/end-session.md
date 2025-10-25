@@ -1,48 +1,33 @@
----
-description: Creates a handoff summary at the end of a session for seamless context transfer to the next session
----
+# End Session - Update Daily Handoff
 
-You are ending a work session and need to create a handoff summary for the next session.
+When user says "run /end-session" or "/end-session", launch the session-summarizer agent to update today's handoff file.
 
-## Instructions
+## What This Does
 
-1. **Find the current session file**
-   - Look in `Context/2025-10-22/` (or current date folder)
-   - Identify the most recent `session-*.md` file
+1. Reviews the Context/[today's date]/ folder
+2. Finds the main HANDOFF file (e.g., HANDOFF-2025-10-24.md)
+3. Identifies which session-*.md files haven't been summarized yet
+4. Summarizes new sessions and appends to the HANDOFF file
+5. Maintains ONE handoff file per day (not multiple)
+6. **KEEPS original session files** (does not delete them)
 
-2. **Use the session-summarizer agent**
-   - Launch it with: Task tool, subagent_type: "general-purpose"
-   - Provide it the session file path
-   - Have it extract decisions and next actions
+## Execute Directly
 
-3. **Create handoff document**
-   - Save to: `Context/[date]/HANDOFF-[date].md`
-   - Format: Decision log (NOT chat summary)
-   - Length: < 200 lines
+DO NOT use SlashCommand tool - it causes double execution.
 
-4. **Confirm with user**
-   - Show the handoff summary
-   - Ask: "Does this capture our decisions? Anything missing?"
+Instead, immediately use Task tool:
 
-## What the Handoff Should Include
+```
+Task tool with:
+- subagent_type: "session-summarizer"
+- description: "Update today's handoff file"
+- prompt: "Review Context/[current date]/ folder. Find the main HANDOFF file. Check which session files have NOT been summarized yet. Summarize any new sessions and update the single handoff file. Follow the established pattern of maintaining ONE handoff file per day. IMPORTANT: Do not delete source session files after processing."
+```
 
-✅ **Essential:**
-- Primary goal (one sentence)
-- Key decisions made
-- What was ruled out
-- Next 3 concrete actions
-- Blockers/open questions
+## Important
 
-❌ **Don't include:**
-- Play-by-play chat recap
-- Verbatim quotes
-- Implementation details (those go in design docs)
-- Speculation about future phases
-
-## User's Next Session
-
-Tell the user:
-
-"Next time you start a session, open `Context/[date]/HANDOFF-[date].md` and paste it in chat, or simply say: 'Read the handoff file and continue where we left off.'"
-
-This ensures seamless continuity without re-explaining everything.
+- This preserves the user's existing workflow
+- One clean handoff file per day
+- New session summaries are APPENDED, not creating new files
+- **Original session-*.md files are PRESERVED** (not deleted)
+- Agent processes ALL unsummarized sessions in one pass

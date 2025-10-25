@@ -5,6 +5,7 @@ Now includes competition analysis for opportunity scoring
 """
 
 from typing import Dict, List
+from datetime import datetime
 from lib.breadcrumb_system import BreadcrumbTrail
 from .config import Agent0Config as Config
 from .competition_analyzer import CompetitionAnalyzer
@@ -16,6 +17,197 @@ class TopicScorer:
     def __init__(self, trail: BreadcrumbTrail):
         self.trail = trail
         self.competition_analyzer = CompetitionAnalyzer(trail)
+
+    def calculate_recency_score(
+        self,
+        trends_data: Dict,
+        reddit_data: Dict,
+        youtube_data: Dict
+    ) -> Dict:
+        """
+        Calculate recency/urgency score based on content freshness
+
+        Recency Score Components:
+        - Recent activity weight (60%): Posts/videos in last 30-90 days
+        - Trend momentum (30%): Rising vs falling from Google Trends
+        - Content freshness (10%): Average age of content
+
+        Returns dict with:
+        - recency_score: 0-100 overall recency/urgency
+        - recent_activity_pct: % of content in last 90 days
+        - trend_momentum: Rising/stable/falling
+        - avg_content_age_days: Average age of content
+        """
+        now = datetime.now().timestamp()
+        days_30 = 30 * 24 * 60 * 60
+        days_90 = 90 * 24 * 60 * 60
+
+        recent_30_count = 0
+        recent_90_count = 0
+        total_content = 0
+        total_age_days = 0
+
+        # Analyze Reddit timestamps
+        reddit_timestamps = reddit_data.get('timestamps', [])
+        for ts in reddit_timestamps:
+            age = now - ts
+            total_content += 1
+            total_age_days += (age / (24 * 60 * 60))
+
+            if age <= days_30:
+                recent_30_count += 1
+                recent_90_count += 1
+            elif age <= days_90:
+                recent_90_count += 1
+
+        # Analyze YouTube timestamps
+        youtube_timestamps = youtube_data.get('timestamps', [])
+        for ts in youtube_timestamps:
+            age = now - ts
+            total_content += 1
+            total_age_days += (age / (24 * 60 * 60))
+
+            if age <= days_30:
+                recent_30_count += 1
+                recent_90_count += 1
+            elif age <= days_90:
+                recent_90_count += 1
+
+        # Calculate components
+        if total_content == 0:
+            return {
+                'recency_score': 0,
+                'recent_activity_pct': 0,
+                'trend_momentum': 'no_data',
+                'avg_content_age_days': 0,
+                'recent_30_days': 0,
+                'recent_90_days': 0,
+                'total_content': 0
+            }
+
+        # 1. Recent activity (60%): Percentage of content in last 90 days
+        recent_90_pct = (recent_90_count / total_content) * 100
+        recent_activity_score = min(recent_90_pct, 100) * 0.60
+
+        # 2. Trend momentum (30%): From Google Trends
+        trend_direction = trends_data.get('trend_direction', 'stable')
+        if trend_direction == 'rising':
+            trend_momentum_score = 100 * 0.30
+        elif trend_direction == 'falling':
+            trend_momentum_score = 30 * 0.30  # Penalty for falling
+        else:  # stable or no_data
+            trend_momentum_score = 60 * 0.30
+
+        # 3. Content freshness (10%): Inverse of average age
+        avg_age_days = total_age_days / total_content
+        # Convert to freshness score: 0 days = 100, 365 days = 0
+        freshness_score = max(0, (1 - (avg_age_days / 365)) * 100) * 0.10
+
+        # Combined recency score
+        recency_score = recent_activity_score + trend_momentum_score + freshness_score
+
+        return {
+            'recency_score': round(recency_score, 2),
+            'recent_activity_pct': round(recent_90_pct, 1),
+            'trend_momentum': trend_direction,
+            'avg_content_age_days': round(avg_age_days, 1),
+            'recent_30_days': recent_30_count,
+            'recent_90_days': recent_90_count,
+            'total_content': total_content
+        }
+
+    def calculate_data_richness(
+        self,
+        trends_data: Dict,
+        reddit_data: Dict,
+        youtube_data: Dict
+    ) -> Dict:
+        """
+        Calculate data richness score based on volume and quality of data sources
+
+        Returns dict with:
+        - richness_score: 0-100 overall data quality
+        - richness_stars: 1-5 star rating
+        - source_breakdown: Details per source
+        """
+        scores = []
+        breakdown = {}
+
+        # Google Trends richness (0-100)
+        trends_points = trends_data.get('data_points', 0)
+        trends_interest = trends_data.get('average_interest', 0)
+
+        if trends_points > 0:
+            # More data points (52 weeks = full year) + higher interest = richer
+            trends_richness = min(
+                (trends_points / 52) * 50 +  # Data point coverage
+                (trends_interest / 100) * 50,  # Interest level
+                100
+            )
+            scores.append(trends_richness)
+            breakdown['trends'] = {
+                'richness': round(trends_richness, 1),
+                'data_points': trends_points,
+                'average_interest': trends_interest
+            }
+
+        # Reddit richness (0-100)
+        reddit_posts = reddit_data.get('total_posts', 0)
+        reddit_engagement = reddit_data.get('avg_engagement', 0)
+
+        if reddit_posts > 0:
+            # More posts + higher engagement = richer
+            reddit_richness = min(
+                (reddit_posts / 100) * 30 +  # Post volume (100 posts = good sample)
+                (reddit_engagement / 5000) * 70,  # Engagement quality
+                100
+            )
+            scores.append(reddit_richness)
+            breakdown['reddit'] = {
+                'richness': round(reddit_richness, 1),
+                'total_posts': reddit_posts,
+                'avg_engagement': reddit_engagement
+            }
+
+        # YouTube richness (0-100)
+        youtube_videos = youtube_data.get('total_videos', 0)
+        youtube_views = youtube_data.get('avg_views', 0)
+
+        if youtube_videos > 0:
+            # More videos + higher views = richer
+            youtube_richness = min(
+                (youtube_videos / 50) * 20 +  # Video volume (50 videos = good sample)
+                (youtube_views / 1000000) * 80,  # View quality (1M views = rich)
+                100
+            )
+            scores.append(youtube_richness)
+            breakdown['youtube'] = {
+                'richness': round(youtube_richness, 1),
+                'total_videos': youtube_videos,
+                'avg_views': youtube_views
+            }
+
+        # Overall richness = average of available sources
+        overall_richness = sum(scores) / len(scores) if scores else 0
+
+        # Convert to star rating (1-5)
+        if overall_richness >= 90:
+            stars = 5
+        elif overall_richness >= 70:
+            stars = 4
+        elif overall_richness >= 50:
+            stars = 3
+        elif overall_richness >= 30:
+            stars = 2
+        else:
+            stars = 1
+
+        return {
+            'richness_score': round(overall_richness, 2),
+            'richness_stars': stars,
+            'sources_count': len(scores),
+            'breakdown': breakdown
+        }
 
     def normalize_trends_score(self, trends_data: Dict) -> float:
         """
@@ -193,6 +385,30 @@ class TopicScorer:
             opportunity
         )
 
+        # Calculate audience size (for bubble sizing in visualization)
+        audience_size = self.competition_analyzer.calculate_audience_size(
+            trends_data,
+            reddit_data,
+            youtube_data
+        )
+
+        # Calculate data richness (for confidence and visualization)
+        richness = self.calculate_data_richness(
+            trends_data,
+            reddit_data,
+            youtube_data
+        )
+
+        # Calculate recency/urgency (NEW)
+        recency = self.calculate_recency_score(
+            trends_data,
+            reddit_data,
+            youtube_data
+        )
+
+        # Classify zone based on demand and competition
+        zone = self._classify_zone(composite, competition['overall_competition'])
+
         result = {
             # Demand metrics (original)
             "composite_score": round(composite, 2),
@@ -209,7 +425,17 @@ class TopicScorer:
             "opportunity": opportunity,
 
             # Insights (NEW)
-            "insights": insights
+            "insights": insights,
+
+            # Visualization metrics (NEW)
+            "audience_size": audience_size,
+            "zone": zone,
+
+            # Data richness metrics (NEW)
+            "richness": richness,
+
+            # Recency metrics (NEW)
+            "recency": recency
         }
 
         self.trail.light(Config.LED_SCORING_START + 1, {
@@ -220,6 +446,30 @@ class TopicScorer:
         })
 
         return result
+
+    def _classify_zone(self, demand_score: float, competition_score: float) -> str:
+        """
+        Classify topic into quadrant zone based on demand and competition
+
+        Zones:
+        - gold_mine: High demand (>50), Low competition (<50)
+        - viable: High demand (>50), High competition (>50)
+        - risky_niche: Low demand (<50), Low competition (<50)
+        - avoid: Low demand (<50), High competition (>50)
+
+        Returns: Zone identifier string
+        """
+        high_demand = demand_score >= 50
+        low_competition = competition_score < 50
+
+        if high_demand and low_competition:
+            return 'gold_mine'
+        elif high_demand and not low_competition:
+            return 'viable'
+        elif not high_demand and low_competition:
+            return 'risky_niche'
+        else:
+            return 'avoid'
 
     def rank_topics(self, topic_data: List[Dict]) -> List[Dict]:
         """

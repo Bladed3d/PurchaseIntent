@@ -805,18 +805,50 @@ class DashboardGenerator:
             const ctx = document.getElementById('topicChart');
             if (!ctx) return;
 
-            const datasets = topics.map((topic, idx) => ({{
-                label: topic.topic,
-                data: [{{
-                    x: topic.scores?.opportunity?.competition_score || topic.scores?.competition?.overall_competition || 0,
-                    y: topic.scores?.opportunity?.demand_score || topic.scores?.composite_score || 0,
-                    r: 15
-                }}],
-                backgroundColor: getColorForCategory(topic.scores?.opportunity?.recommendation || topic.scores?.zone),
-                borderColor: 'white',
-                borderWidth: 2,
-                topicData: topic  // ADD THIS: Include full topic data for plugins
-            }}));
+            // Zone color mapping
+            const zoneColors = {{
+                gold_mine: {{ bg: 'rgba(76, 175, 80, 0.6)', border: '#4CAF50' }},
+                viable: {{ bg: 'rgba(33, 150, 243, 0.6)', border: '#2196F3' }},
+                risky_niche: {{ bg: 'rgba(255, 152, 0, 0.6)', border: '#FF9800' }},
+                risky: {{ bg: 'rgba(255, 152, 0, 0.6)', border: '#FF9800' }},
+                avoid: {{ bg: 'rgba(244, 67, 54, 0.6)', border: '#f44336' }}
+            }};
+
+            // Create one dataset per topic with flattened data structure
+            const datasets = topics.map(topicData => {{
+                const scores = topicData.scores || {{}};
+                const zone = scores.zone || scores.opportunity?.recommendation || 'viable';
+                const colors = zoneColors[zone] || zoneColors.viable;
+
+                // Flatten data for plugins
+                const flatTopic = {{
+                    topic: topicData.topic,
+                    demand: scores.composite_score || 0,
+                    competition: scores.competition?.overall_competition || scores.opportunity?.competition_score || 0,
+                    opportunity: scores.opportunity?.opportunity_score || 0,
+                    audience_size: scores.audience_size || 0,
+                    zone: zone,
+                    confidence: scores.confidence || 100,
+                    richness_stars: scores.richness?.richness_stars || 5,
+                    richness_score: scores.richness?.richness_score || 100,
+                    richness_breakdown: scores.richness?.breakdown || {{}},
+                    recency_score: scores.recency?.recency_score || 0,
+                    recency_data: scores.recency || {{}}
+                }};
+
+                return {{
+                    label: flatTopic.topic,
+                    data: [{{
+                        x: flatTopic.competition,
+                        y: flatTopic.demand,
+                        r: Math.sqrt(flatTopic.audience_size / 100000) + 15  // Bubble size scales with audience
+                    }}],
+                    backgroundColor: colors.bg,
+                    borderColor: colors.border,
+                    borderWidth: 3,
+                    topicData: flatTopic
+                }};
+            }});
 
             if (currentChart) {{
                 currentChart.destroy();
@@ -838,16 +870,49 @@ class DashboardGenerator:
                     plugins: {{
                         tooltip: {{
                             callbacks: {{
-                                label: (context) => {{
-                                    const topic = topics[context.datasetIndex];
-                                    const demandScore = topic.scores?.opportunity?.demand_score || topic.scores?.composite_score;
-                                    const compScore = topic.scores?.opportunity?.competition_score || topic.scores?.competition?.overall_competition;
-                                    return [
-                                        topic.topic,
-                                        `Demand: ${{demandScore?.toFixed(1) || 'N/A'}}`,
-                                        `Competition: ${{compScore?.toFixed(1) || 'N/A'}}`,
-                                        `Score: ${{topic.scores?.composite_score?.toFixed(1) || 'N/A'}}`
+                                label: function(context) {{
+                                    const topic = context.dataset.topicData;
+                                    const stars = '⭐'.repeat(topic.richness_stars);
+                                    const breakdown = topic.richness_breakdown || {{}};
+                                    const recency = topic.recency_data || {{}};
+
+                                    let lines = [
+                                        `Topic: ${{topic.topic}}`,
+                                        `Demand: ${{topic.demand.toFixed(1)}}/100`,
+                                        `Competition: ${{topic.competition.toFixed(1)}}/100`,
+                                        `Opportunity: ${{topic.opportunity.toFixed(1)}}/100`,
+                                        `Audience: ${{topic.audience_size.toLocaleString()}}`,
+                                        ``,
+                                        `Data Richness: ${{stars}} (${{topic.richness_stars}}/5)`
                                     ];
+
+                                    // Add breakdown if available
+                                    if (breakdown.trends) {{
+                                        lines.push(`├─ Trends: ${{breakdown.trends.data_points}} pts : ${{breakdown.trends.average_interest.toFixed(1)}} interest`);
+                                    }}
+                                    if (breakdown.reddit) {{
+                                        lines.push(`├─ Reddit: ${{breakdown.reddit.total_posts}} posts : ${{breakdown.reddit.avg_engagement.toFixed(0)}} engage`);
+                                    }}
+                                    if (breakdown.youtube) {{
+                                        lines.push(`└─ YouTube: ${{breakdown.youtube.total_videos}} videos : ${{breakdown.youtube.avg_views.toLocaleString()}} views`);
+                                    }}
+
+                                    // Add recency information
+                                    if (recency.recency_score !== undefined) {{
+                                        lines.push(``);
+                                        lines.push(`Recency/Urgency: ${{recency.recency_score.toFixed(1)}}/100`);
+                                        if (recency.recent_90_days > 0) {{
+                                            lines.push(`├─ Recent Activity: ${{recency.recent_activity_pct.toFixed(1)}}% in 90d`);
+                                            lines.push(`├─ Last 30 days: ${{recency.recent_30_days}} items`);
+                                            lines.push(`├─ Trend: ${{recency.trend_momentum}}`);
+                                            lines.push(`└─ Avg Age: ${{recency.avg_content_age_days.toFixed(0)}} days`);
+                                        }}
+                                    }}
+
+                                    lines.push(``);
+                                    lines.push(`Zone: ${{topic.zone.replace('_', ' ').toUpperCase()}}`);
+
+                                    return lines;
                                 }}
                             }}
                         }},

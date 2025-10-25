@@ -344,6 +344,12 @@ class DashboardGenerator:
         if tree_data is None:
             tree_data = {"root_nodes": [], "metadata": {}}
 
+        # Extract ALL topics from tree for initial chart display
+        all_tree_topics = self._extract_all_topics_from_tree(tree_data.get('root_nodes', []))
+
+        # Use tree topics if available, otherwise use ranked_topics
+        topics_for_chart = all_tree_topics if all_tree_topics else ranked_topics
+
         # Build tree HTML
         tree_html = self._build_tree_html(tree_data.get('root_nodes', []))
 
@@ -596,11 +602,88 @@ class DashboardGenerator:
 
     <script>
         // Data
-        const allTopics = {json.dumps(ranked_topics)};
+        const allTopics = {json.dumps(topics_for_chart)};
         const treeData = {json.dumps(tree_data)};
 
         let currentChart = null;
         let selectedTopics = new Set();
+
+        // Plugin to draw richness number inside bubbles
+        const centerTextPlugin = {{
+            id: 'centerText',
+            afterDatasetsDraw(chart) {{
+                const ctx = chart.ctx;
+                chart.data.datasets.forEach((dataset, i) => {{
+                    const meta = chart.getDatasetMeta(i);
+                    if (!meta.hidden) {{
+                        meta.data.forEach((element) => {{
+                            const topicData = dataset.topicData;
+                            const richness = topicData?.richness?.richness_stars || topicData?.richness_stars || 5;
+                            const {{x, y}} = element.getCenterPoint();
+
+                            // White number with drop shadow for maximum contrast
+                            ctx.save();
+
+                            // Draw drop shadow for better visibility
+                            ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+                            ctx.shadowBlur = 4;
+                            ctx.shadowOffsetX = 2;
+                            ctx.shadowOffsetY = 2;
+
+                            ctx.font = 'bold 20px Arial';
+                            ctx.fillStyle = 'white';
+                            ctx.textAlign = 'center';
+                            ctx.textBaseline = 'middle';
+                            ctx.fillText(richness, x, y);
+                            ctx.restore();
+                        }});
+                    }}
+                }});
+            }}
+        }};
+
+        // Plugin to draw clock-ring recency visualization around bubbles
+        const clockRingPlugin = {{
+            id: 'clockRing',
+            afterDatasetsDraw(chart) {{
+                const ctx = chart.ctx;
+                chart.data.datasets.forEach((dataset, i) => {{
+                    const meta = chart.getDatasetMeta(i);
+                    if (!meta.hidden) {{
+                        meta.data.forEach((element) => {{
+                            const topicData = dataset.topicData;
+                            const recencyScore = topicData?.recency?.recency_score || topicData?.recency_score || 0;
+                            const {{x, y}} = element.getCenterPoint();
+                            const radius = element.options.radius + 3; // Ring outside bubble
+                            const ringWidth = 5.5;
+
+                            // Calculate fill percentage (0-100 maps to 0-360 degrees)
+                            const fillAngle = (recencyScore / 100) * 2 * Math.PI;
+
+                            ctx.save();
+                            ctx.lineWidth = ringWidth;
+
+                            // Draw empty ring (20% opacity purple) - full circle
+                            ctx.beginPath();
+                            ctx.arc(x, y, radius, 0, 2 * Math.PI);
+                            ctx.strokeStyle = 'rgba(124, 77, 255, 0.2)';
+                            ctx.stroke();
+
+                            // Draw filled arc (solid purple) - from 12 o'clock clockwise
+                            if (fillAngle > 0) {{
+                                ctx.beginPath();
+                                // Start at -90 degrees (12 o'clock) and go clockwise
+                                ctx.arc(x, y, radius, -Math.PI / 2, -Math.PI / 2 + fillAngle);
+                                ctx.strokeStyle = '#7C4DFF';
+                                ctx.stroke();
+                            }}
+
+                            ctx.restore();
+                        }});
+                    }}
+                }});
+            }}
+        }};
 
         // Initialize
         window.addEventListener('load', () => {{
@@ -686,6 +769,9 @@ class DashboardGenerator:
 
             const scores = topicData.scores || {{}};
             const aiDesc = topicData.ai_description || topicData.description || "No description available";
+            const demandScore = scores.opportunity?.demand_score || scores.composite_score;
+            const compScore = scores.opportunity?.competition_score || scores.competition?.overall_competition;
+            const category = scores.opportunity?.recommendation || scores.zone || 'Unknown';
 
             content.innerHTML = `
                 <h3>${{topicData.topic}}</h3>
@@ -695,13 +781,13 @@ class DashboardGenerator:
                 </div>
                 <div class="info-section">
                     <strong>Composite Score:</strong> ${{scores.composite_score?.toFixed(1) || 'N/A'}}<br>
-                    <strong>Demand Score:</strong> ${{scores.demand_score?.toFixed(1) || 'N/A'}}<br>
-                    <strong>Competition Score:</strong> ${{scores.competition_score?.toFixed(1) || 'N/A'}}<br>
+                    <strong>Demand Score:</strong> ${{demandScore?.toFixed(1) || 'N/A'}}<br>
+                    <strong>Competition Score:</strong> ${{compScore?.toFixed(1) || 'N/A'}}<br>
                     <strong>Confidence:</strong> ${{scores.confidence?.toFixed(1) || 'N/A'}}%
                 </div>
                 <div class="info-section">
                     <strong>Sources:</strong> ${{scores.sources_with_data || 0}} AI agents<br>
-                    <strong>Category:</strong> ${{scores.category || 'Unknown'}}
+                    <strong>Category:</strong> ${{category}}
                 </div>
             `;
 
@@ -722,13 +808,14 @@ class DashboardGenerator:
             const datasets = topics.map((topic, idx) => ({{
                 label: topic.topic,
                 data: [{{
-                    x: topic.scores?.competition_score || 0,
-                    y: topic.scores?.demand_score || 0,
+                    x: topic.scores?.opportunity?.competition_score || topic.scores?.competition?.overall_competition || 0,
+                    y: topic.scores?.opportunity?.demand_score || topic.scores?.composite_score || 0,
                     r: 15
                 }}],
-                backgroundColor: getColorForCategory(topic.scores?.category),
+                backgroundColor: getColorForCategory(topic.scores?.opportunity?.recommendation || topic.scores?.zone),
                 borderColor: 'white',
-                borderWidth: 2
+                borderWidth: 2,
+                topicData: topic  // ADD THIS: Include full topic data for plugins
             }}));
 
             if (currentChart) {{
@@ -738,6 +825,7 @@ class DashboardGenerator:
             currentChart = new Chart(ctx, {{
                 type: 'bubble',
                 data: {{ datasets }},
+                plugins: [centerTextPlugin, clockRingPlugin],
                 options: {{
                     responsive: true,
                     maintainAspectRatio: false,
@@ -752,10 +840,12 @@ class DashboardGenerator:
                             callbacks: {{
                                 label: (context) => {{
                                     const topic = topics[context.datasetIndex];
+                                    const demandScore = topic.scores?.opportunity?.demand_score || topic.scores?.composite_score;
+                                    const compScore = topic.scores?.opportunity?.competition_score || topic.scores?.competition?.overall_competition;
                                     return [
                                         topic.topic,
-                                        `Demand: ${{topic.scores?.demand_score?.toFixed(1) || 'N/A'}}`,
-                                        `Competition: ${{topic.scores?.competition_score?.toFixed(1) || 'N/A'}}`,
+                                        `Demand: ${{demandScore?.toFixed(1) || 'N/A'}}`,
+                                        `Competition: ${{compScore?.toFixed(1) || 'N/A'}}`,
                                         `Score: ${{topic.scores?.composite_score?.toFixed(1) || 'N/A'}}`
                                     ];
                                 }}
@@ -924,6 +1014,16 @@ class DashboardGenerator:
             html_parts.append(node_html)
 
         return '\n'.join(html_parts)
+
+    def _extract_all_topics_from_tree(self, nodes: List[Dict]) -> List[Dict]:
+        """Extract all topic data from tree nodes recursively"""
+        topics = []
+        for node in nodes:
+            if node.get('data'):
+                topics.append(node['data'])
+            if node.get('children'):
+                topics.extend(self._extract_all_topics_from_tree(node['children']))
+        return topics
 
     def open_dashboard(self, html_path: str) -> None:
         """Open HTML dashboard in default browser"""

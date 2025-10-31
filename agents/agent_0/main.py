@@ -31,6 +31,7 @@ from agents.agent_0.scoring import TopicScorer
 from agents.agent_0.dashboard import DashboardGenerator
 from agents.agent_0.queue_manager import QueueManager
 from agents.agent_0.drill_down_loader import DrillDownTrail
+from agents.agent_0.purchase_intent_analyzer import PurchaseIntentAnalyzer
 
 
 def main(topics: List[str], method: str = "pytrends", parent_topic: str = None, use_split_view: bool = False):
@@ -120,6 +121,7 @@ def main(topics: List[str], method: str = "pytrends", parent_topic: str = None, 
     agent_loader = AgentResultsLoader(trail)
 
     reddit_client = RedditClient(trail)
+    purchase_intent_analyzer = PurchaseIntentAnalyzer(trail)
     scorer = TopicScorer(trail)
     dashboard_gen = DashboardGenerator(trail)
 
@@ -187,9 +189,27 @@ def main(topics: List[str], method: str = "pytrends", parent_topic: str = None, 
                 "source": "google_trends"
             })
 
-        # Query Reddit
-        print("  [2/2] Querying Reddit...")
-        reddit_data = reddit_client.search_topic(topic)
+        # Query Reddit (with purchase intent data)
+        print("  [2/3] Querying Reddit...")
+        reddit_data = reddit_client.search_topic(topic, fetch_purchase_intent=True)
+
+        # Analyze purchase intent from Reddit posts
+        print("  [3/3] Analyzing purchase intent...")
+        purchase_intent_data = {}
+        if reddit_data.get('posts'):
+            purchase_intent_data = purchase_intent_analyzer.analyze_purchase_intent(
+                topic,
+                reddit_data['posts']
+            )
+
+            # Log purchase intent findings
+            if purchase_intent_data['purchase_signals']:
+                print(f"  [OK] Purchase Intent: {purchase_intent_data['purchase_intent_score']:.1f}/100")
+                print(f"  [OK] Willingness to Pay: {purchase_intent_data['willingness_to_pay_score']:.1f}/100")
+                for signal in purchase_intent_data['purchase_signals'][:3]:  # Show top 3
+                    # Remove emoji for Windows console compatibility
+                    safe_signal = signal.encode('ascii', 'ignore').decode('ascii')
+                    print(f"       {safe_signal}")
 
         # Calculate scores
         print("  [*] Calculating composite score...")
@@ -203,7 +223,8 @@ def main(topics: List[str], method: str = "pytrends", parent_topic: str = None, 
             "topic": topic,
             "scores": scores,
             "trends_data": trends_data,
-            "reddit_data": reddit_data
+            "reddit_data": reddit_data,
+            "purchase_intent": purchase_intent_data  # NEW: purchase intent analysis
         }
 
         # Add description from agent results if available

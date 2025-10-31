@@ -358,19 +358,25 @@ class RedditClient:
             user_agent=Config.REDDIT_USER_AGENT
         )
 
-    def search_topic(self, keyword: str) -> Dict:
+    def search_topic(self, keyword: str, fetch_purchase_intent: bool = True) -> Dict:
         """
         Search Reddit for keyword and analyze engagement
+
+        Args:
+            keyword: Search term
+            fetch_purchase_intent: If True, returns full post objects for purchase intent analysis
 
         Returns dict with:
         - total_posts: number of relevant posts found
         - total_engagement: sum of scores (upvotes - downvotes)
         - avg_engagement: average score per post
         - top_subreddits: list of most relevant subreddits
+        - posts: (if fetch_purchase_intent=True) list of post objects for further analysis
         """
         self.trail.light(Config.LED_REDDIT_START, {
             "action": "search_reddit",
-            "keyword": keyword
+            "keyword": keyword,
+            "fetch_purchase_intent": fetch_purchase_intent
         })
 
         try:
@@ -420,13 +426,16 @@ class RedditClient:
                 "total_engagement": total_engagement,
                 "avg_engagement": round(avg_engagement, 2),
                 "top_subreddits": [{"name": name, "count": count} for name, count in top_subreddits],
-                "timestamps": timestamps  # NEW: for recency calculation
+                "timestamps": timestamps,  # for recency calculation
+                "posts": posts if fetch_purchase_intent else None  # NEW: for purchase intent analysis
             }
 
+            # Log success (exclude posts from LED - not JSON serializable)
+            log_result = {k: v for k, v in result.items() if k != 'posts'}
             self.trail.light(Config.LED_REDDIT_START + 2, {
                 "action": "reddit_success",
                 "keyword": keyword,
-                **result
+                **log_result
             })
 
             return result

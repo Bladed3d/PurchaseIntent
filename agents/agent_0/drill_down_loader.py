@@ -211,10 +211,13 @@ class DrillDownTrail:
             clean_data = copy.deepcopy(topic_data)
 
             # Remove Reddit Submission objects (stored in trends_data and reddit_data)
-            if 'trends_data' in clean_data and 'posts' in clean_data['trends_data']:
-                del clean_data['trends_data']['posts']
-            if 'reddit_data' in clean_data and 'posts' in clean_data['reddit_data']:
-                del clean_data['reddit_data']['posts']
+            # Also handle None values for drill-down mode
+            if 'trends_data' in clean_data and clean_data['trends_data'] is not None:
+                if 'posts' in clean_data['trends_data']:
+                    del clean_data['trends_data']['posts']
+            if 'reddit_data' in clean_data and clean_data['reddit_data'] is not None:
+                if 'posts' in clean_data['reddit_data']:
+                    del clean_data['reddit_data']['posts']
 
             node = {
                 "id": f"{topic_data['topic'].replace(' ', '_')}_{session_time}",

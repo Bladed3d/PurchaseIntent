@@ -46,6 +46,10 @@ class CompetitionAnalyzer:
 
         Returns: 0-100 (higher = more competitive)
         """
+        # Handle drill-down mode (no trends data)
+        if not trends_data:
+            return 50.0  # Default moderate competition when no trends data
+
         trend_direction = trends_data.get('trend_direction', 'stable')
         average_interest = trends_data.get('average_interest', 0)
         data_points = trends_data.get('data_points', 0)
@@ -337,7 +341,7 @@ class CompetitionAnalyzer:
         Returns: Integer representing estimated audience size
         """
         # Google Trends: Average interest as search volume proxy (increased weight)
-        trends_interest = trends_data.get('average_interest', 0)
+        trends_interest = trends_data.get('average_interest', 0) if trends_data else 0
         trends_audience = int(trends_interest * 150000)  # Increased scale factor
 
         # Reddit: Engagement metric (posts × average score, doubled weight)
@@ -385,12 +389,13 @@ class CompetitionAnalyzer:
         else:
             insights.append("🔴 Very competitive - avoid or find unique angle")
 
-        # Trend insights
-        trend_dir = trends_data.get('trend_direction', 'stable')
-        if trend_dir == 'rising':
-            insights.append("✅ Rising trend - early mover advantage")
-        elif trend_dir == 'falling':
-            insights.append("🔴 Declining trend - market may be dying")
+        # Trend insights (skip if no trends data in drill-down mode)
+        if trends_data:
+            trend_dir = trends_data.get('trend_direction', 'stable')
+            if trend_dir == 'rising':
+                insights.append("✅ Rising trend - early mover advantage")
+            elif trend_dir == 'falling':
+                insights.append("🔴 Declining trend - market may be dying")
 
         # Reddit insights - purchase intent signals
         reddit_posts = reddit_data.get('total_posts', 0)

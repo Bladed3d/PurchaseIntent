@@ -75,13 +75,18 @@ class TopicScorer:
         recent_90_pct = (recent_90_count / total_content) * 100
         recent_activity_score = min(recent_90_pct, 100) * 0.60
 
-        # 2. Trend momentum (30%): From Google Trends
-        trend_direction = trends_data.get('trend_direction', 'stable')
-        if trend_direction == 'rising':
-            trend_momentum_score = 100 * 0.30
-        elif trend_direction == 'falling':
-            trend_momentum_score = 30 * 0.30  # Penalty for falling
-        else:  # stable or no_data
+        # 2. Trend momentum (30%): From Google Trends (skip if no trends data)
+        if trends_data:
+            trend_direction = trends_data.get('trend_direction', 'stable')
+            if trend_direction == 'rising':
+                trend_momentum_score = 100 * 0.30
+            elif trend_direction == 'falling':
+                trend_momentum_score = 30 * 0.30  # Penalty for falling
+            else:  # stable or no_data
+                trend_momentum_score = 60 * 0.30
+        else:
+            # Drill-down mode: No trends data, use neutral score
+            trend_direction = 'no_data'
             trend_momentum_score = 60 * 0.30
 
         # 3. Content freshness (10%): Inverse of average age
@@ -118,23 +123,24 @@ class TopicScorer:
         scores = []
         breakdown = {}
 
-        # Google Trends richness (0-100)
-        trends_points = trends_data.get('data_points', 0)
-        trends_interest = trends_data.get('average_interest', 0)
+        # Google Trends richness (0-100) - skip if no trends data
+        if trends_data:
+            trends_points = trends_data.get('data_points', 0)
+            trends_interest = trends_data.get('average_interest', 0)
 
-        if trends_points > 0:
-            # More data points (52 weeks = full year) + higher interest = richer
-            trends_richness = min(
-                (trends_points / 52) * 50 +  # Data point coverage
-                (trends_interest / 100) * 50,  # Interest level
-                100
-            )
-            scores.append(trends_richness)
-            breakdown['trends'] = {
-                'richness': round(trends_richness, 1),
-                'data_points': trends_points,
-                'average_interest': trends_interest
-            }
+            if trends_points > 0:
+                # More data points (52 weeks = full year) + higher interest = richer
+                trends_richness = min(
+                    (trends_points / 52) * 50 +  # Data point coverage
+                    (trends_interest / 100) * 50,  # Interest level
+                    100
+                )
+                scores.append(trends_richness)
+                breakdown['trends'] = {
+                    'richness': round(trends_richness, 1),
+                    'data_points': trends_points,
+                    'average_interest': trends_interest
+                }
 
         # Reddit richness (0-100)
         reddit_posts = reddit_data.get('total_posts', 0)

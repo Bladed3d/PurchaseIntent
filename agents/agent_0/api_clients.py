@@ -1,6 +1,6 @@
 """
 Agent 0 API Clients
-Handles integration with Google Trends and Reddit APIs
+Handles integration with Google Trends, Reddit, and YouTube APIs
 """
 
 import time
@@ -14,6 +14,13 @@ import praw
 
 from lib.breadcrumb_system import BreadcrumbTrail
 from .config import Agent0Config as Config
+
+# YouTube imports (optional - only loaded if ENABLE_YOUTUBE=True)
+try:
+    from googleapiclient.discovery import build
+    YOUTUBE_AVAILABLE = True
+except ImportError:
+    YOUTUBE_AVAILABLE = False
 
 
 class GoogleTrendsClient:
@@ -453,5 +460,149 @@ class RedditClient:
                 f"Reddit API failed for '{keyword}': {error_msg[:200]}. "
                 f"Check REDDIT_CLIENT_ID, REDDIT_CLIENT_SECRET, and REDDIT_USER_AGENT in .env file."
             ) from e
+
+
+class YouTubeClient:
+    """YouTube Data API v3 client (optional - for final validation only)"""
+
+    def __init__(self, trail: BreadcrumbTrail):
+        self.trail = trail
+
+        if not YOUTUBE_AVAILABLE:
+            raise ImportError(
+                "YouTube API requires google-api-python-client. "
+                "Install with: pip install google-api-python-client"
+            )
+
+        if not Config.YOUTUBE_API_KEY:
+            raise ValueError(
+                "YOUTUBE_API_KEY not found in environment. "
+                "Add it to .env file to use YouTube validation."
+            )
+
+        self.youtube = build('youtube', 'v3', developerKey=Config.YOUTUBE_API_KEY)
+
+    def search_videos(self, keyword: str, fetch_purchase_intent: bool = True) -> Dict:
+        """
+        Search YouTube for keyword and analyze video metrics
+
+        Args:
+            keyword: Search term
+            fetch_purchase_intent: If True, includes video data for intent analysis
+
+        Returns dict with:
+        - total_videos: number of videos found
+        - total_views: sum of view counts
+        - avg_views: average views per video
+        - top_channels: list of most relevant channels
+        - timestamps: video publish dates (for recency analysis)
+        - videos: (if fetch_purchase_intent=True) list of video metadata
+        """
+        self.trail.light(Config.LED_YOUTUBE_START, {
+            "action": "search_youtube",
+            "keyword": keyword,
+            "fetch_purchase_intent": fetch_purchase_intent
+        })
+
+        try:
+            # Search for videos
+            search_response = self.youtube.search().list(
+                q=keyword,
+                part='id,snippet',
+                type='video',
+                maxResults=Config.MAX_YOUTUBE_VIDEOS,
+                order='relevance'
+            ).execute()
+
+            # Respect rate limits
+            time.sleep(Config.RATE_LIMIT_DELAY)
+
+            video_ids = [item['id']['videoId'] for item in search_response.get('items', [])]
+
+            if not video_ids:
+                self.trail.light(Config.LED_YOUTUBE_START + 1, {
+                    "action": "no_videos",
+                    "keyword": keyword
+                })
+                return {
+                    "total_videos": 0,
+                    "total_views": 0,
+                    "avg_views": 0,
+                    "top_channels": []
+                }
+
+            # Get video statistics
+            videos_response = self.youtube.videos().list(
+                id=','.join(video_ids),
+                part='statistics,snippet'
+            ).execute()
+
+            # Calculate metrics
+            videos = videos_response.get('items', [])
+            total_views = sum(
+                int(video['statistics'].get('viewCount', 0))
+                for video in videos
+            )
+            avg_views = total_views / len(videos) if videos else 0
+
+            # Find top channels
+            channel_counts = {}
+            for video in videos:
+                channel = video['snippet']['channelTitle']
+                channel_counts[channel] = channel_counts.get(channel, 0) + 1
+
+            top_channels = sorted(
+                channel_counts.items(),
+                key=lambda x: x[1],
+                reverse=True
+            )[:5]
+
+            # Collect timestamp data for recency analysis (ISO 8601 format from YouTube)
+            timestamps = []
+            for video in videos:
+                published_at = video['snippet'].get('publishedAt', '')
+                if published_at:
+                    # Convert ISO 8601 to Unix timestamp
+                    dt = datetime.fromisoformat(published_at.replace('Z', '+00:00'))
+                    timestamps.append(dt.timestamp())
+
+            result = {
+                "total_videos": len(videos),
+                "total_views": total_views,
+                "avg_views": round(avg_views, 2),
+                "top_channels": [{"name": name, "count": count} for name, count in top_channels],
+                "timestamps": timestamps,
+                "videos": videos if fetch_purchase_intent else None  # For purchase intent analysis
+            }
+
+            # Log success (exclude videos from LED - too verbose)
+            log_result = {k: v for k, v in result.items() if k != 'videos'}
+            self.trail.light(Config.LED_YOUTUBE_START + 2, {
+                "action": "youtube_success",
+                "keyword": keyword,
+                **log_result
+            })
+
+            return result
+
+        except Exception as e:
+            self.trail.fail(Config.LED_YOUTUBE_START + 2, e)
+            # FAIL LOUDLY - Don't hide API failures behind fake zero data
+            error_msg = str(e)
+
+            # Check for quota exceeded error
+            if 'quotaExceeded' in error_msg or 'quota' in error_msg.lower():
+                raise ValueError(
+                    f"YouTube API quota exceeded for today. "
+                    f"Free tier limit: 10,000 units/day. "
+                    f"Quota resets at midnight Pacific Time. "
+                    f"Consider using --drill-down-mode (Reddit-only) for exploration, "
+                    f"then validate final 1-3 topics with YouTube tomorrow."
+                ) from e
+            else:
+                raise ValueError(
+                    f"YouTube API failed for '{keyword}': {error_msg[:200]}. "
+                    f"Check YOUTUBE_API_KEY in .env file and verify it's enabled in Google Cloud Console."
+                ) from e
 
 

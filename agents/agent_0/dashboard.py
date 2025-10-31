@@ -811,6 +811,14 @@ class DashboardGenerator:
             const redditData = topicData.reddit_data || {{}};
             const topSubreddits = redditData.top_subreddits || [];
 
+            // Purchase intent data
+            const purchaseIntent = topicData.purchase_intent || {{}};
+            const intentScore = purchaseIntent.purchase_intent_score || 0;
+            const willingnessScore = purchaseIntent.willingness_to_pay_score || 0;
+            const purchaseSignals = purchaseIntent.purchase_signals || [];
+            const priceRange = purchaseIntent.price_range || null;
+            const avgPrice = purchaseIntent.avg_price || 0;
+
             // Build insights HTML
             const insightsHTML = insights.length > 0
                 ? insights.map(insight => `<div style="margin: 4px 0;">${{insight}}</div>`).join('')
@@ -875,6 +883,35 @@ class DashboardGenerator:
                             <div style="font-size: 18px; font-weight: 600;">${{audienceSize.toLocaleString()}}</div>
                         </div>
                     </div>
+
+                    ${{intentScore > 0 ? `
+                    <div style="margin-bottom: 16px; padding: 12px; background: #fff3e0; border-radius: 6px; border-left: 3px solid #ff9800;">
+                        <div style="font-weight: 600; margin-bottom: 8px; display: flex; align-items: center;">
+                            <span style="margin-right: 6px;">💰</span> Purchase Intent Analysis
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+                            <div style="padding: 8px; background: white; border-radius: 4px;">
+                                <div style="font-size: 11px; color: #666; text-transform: uppercase;">Purchase Intent</div>
+                                <div style="font-size: 24px; font-weight: 600; color: #ff9800;">${{intentScore.toFixed(0)}}<span style="font-size: 14px; color: #999;">/100</span></div>
+                            </div>
+                            <div style="padding: 8px; background: white; border-radius: 4px;">
+                                <div style="font-size: 11px; color: #666; text-transform: uppercase;">Willingness to Pay</div>
+                                <div style="font-size: 24px; font-weight: 600; color: #4caf50;">${{willingnessScore.toFixed(0)}}<span style="font-size: 14px; color: #999;">/100</span></div>
+                            </div>
+                        </div>
+                        ${{priceRange ? `
+                        <div style="padding: 8px; background: white; border-radius: 4px; margin-bottom: 8px;">
+                            <div style="font-size: 11px; color: #666;">Price Range Mentioned</div>
+                            <div style="font-size: 16px; font-weight: 500;">$$${{priceRange[0].toFixed(0)}} - $$${{priceRange[1].toFixed(0)}} <span style="color: #999; font-size: 12px;">(avg $$${{avgPrice.toFixed(0)}})</span></div>
+                        </div>
+                        ` : ''}}
+                        ${{purchaseSignals.length > 0 ? `
+                        <div style="font-size: 13px; line-height: 1.6; color: #555;">
+                            ${{purchaseSignals.map(signal => `<div style="margin: 4px 0; padding-left: 8px; border-left: 2px solid #ff9800;">${{signal}}</div>`).join('')}}
+                        </div>
+                        ` : ''}}
+                    </div>
+                    ` : ''}}
 
                     <div style="margin-bottom: 8px;">
                         <div style="font-weight: 600; margin-bottom: 8px; display: flex; align-items: center;">

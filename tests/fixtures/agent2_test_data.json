@@ -1,0 +1,83 @@
+{
+  "amazon": [
+    {
+      "id": "amazon_1",
+      "text": "As a 34-year-old entrepreneur running my own startup, time management has been my biggest challenge. This product helped me delegate tasks more effectively and focus on what matters.",
+      "source": "amazon"
+    },
+    {
+      "id": "amazon_2",
+      "text": "I'm a 29-year-old software developer working remotely. The focus techniques in this guide really helped with my ADHD. Highly recommend!",
+      "source": "amazon"
+    },
+    {
+      "id": "amazon_3",
+      "text": "Great for mid-career professionals like me (41). I struggle with work-life balance and this helped me set better boundaries.",
+      "source": "amazon"
+    },
+    {
+      "id": "amazon_4",
+      "text": "As a freelance consultant, I was procrastinating too much. This system helped me build better habits and stay on track with my projects.",
+      "source": "amazon"
+    },
+    {
+      "id": "amazon_5",
+      "text": "I'm 37 and manage a team of 15. Delegation was killing me until I found this. Now my business is scaling without burning me out.",
+      "source": "amazon"
+    }
+  ],
+  "reddit": [
+    {
+      "id": "reddit_1",
+      "text": "I'm a 32-year-old founder and this changed how I think about time. Instead of trying to do everything, I now focus on high-impact tasks only. Game changer for entrepreneurs.",
+      "source": "reddit"
+    },
+    {
+      "id": "reddit_2",
+      "text": "As someone with ADHD (I'm 28), focus is my constant battle. This approach actually works - breaks tasks into smaller chunks that don't overwhelm my executive function.",
+      "source": "reddit"
+    },
+    {
+      "id": "reddit_3",
+      "text": "Software engineer here (30M). I was working 60-hour weeks and still felt behind. This helped me automate and systemize my workflow.",
+      "source": "reddit"
+    },
+    {
+      "id": "reddit_4",
+      "text": "I'm in my early 40s, director at a tech company. Work-life balance was non-existent. This framework helped me reclaim evenings with my family.",
+      "source": "reddit"
+    },
+    {
+      "id": "reddit_5",
+      "text": "Millennial entrepreneur (35) trying to reach financial independence. This productivity system helped me build passive income streams without burning out.",
+      "source": "reddit"
+    }
+  ],
+  "youtube": [
+    {
+      "id": "youtube_1",
+      "text": "I'm 33, started my business 2 years ago. Time management and delegation were my weakest points. This guide nailed it - practical steps I could implement immediately.",
+      "source": "youtube"
+    },
+    {
+      "id": "youtube_2",
+      "text": "ADHD millennial here (27F). Finally a productivity system that doesn't assume I can just 'focus harder.' The strategies for managing distractions actually work.",
+      "source": "youtube"
+    },
+    {
+      "id": "youtube_3",
+      "text": "Developer at a startup (31). Always felt like I was context-switching too much. This helped me batch work and protect deep work time.",
+      "source": "youtube"
+    },
+    {
+      "id": "youtube_4",
+      "text": "Mid-career manager (43) struggling with burnout. This approach to setting boundaries and delegating saved my sanity.",
+      "source": "youtube"
+    },
+    {
+      "id": "youtube_5",
+      "text": "I'm 36, pursuing FIRE (financial independence retire early). Efficiency is everything to me. This system helped me optimize my side hustle without sacrificing my day job performance.",
+      "source": "youtube"
+    }
+  ]
+}

@@ -505,6 +505,13 @@ class YouTubeClient:
         })
 
         try:
+            # LED 530: Search API call
+            self.trail.light(Config.LED_YOUTUBE_START, {
+                "action": "youtube_search_api_call",
+                "keyword": keyword,
+                "max_results": Config.MAX_YOUTUBE_VIDEOS
+            })
+
             # Search for videos
             search_response = self.youtube.search().list(
                 q=keyword,
@@ -519,8 +526,14 @@ class YouTubeClient:
 
             video_ids = [item['id']['videoId'] for item in search_response.get('items', [])]
 
+            # LED 531: Search results received
+            self.trail.light(Config.LED_YOUTUBE_START + 1, {
+                "action": "youtube_search_complete",
+                "videos_found": len(video_ids)
+            })
+
             if not video_ids:
-                self.trail.light(Config.LED_YOUTUBE_START + 1, {
+                self.trail.light(Config.LED_YOUTUBE_START + 2, {
                     "action": "no_videos",
                     "keyword": keyword
                 })
@@ -531,6 +544,12 @@ class YouTubeClient:
                     "top_channels": []
                 }
 
+            # LED 532: Fetching video statistics
+            self.trail.light(Config.LED_YOUTUBE_START + 2, {
+                "action": "fetching_video_statistics",
+                "video_count": len(video_ids)
+            })
+
             # Get video statistics
             videos_response = self.youtube.videos().list(
                 id=','.join(video_ids),
@@ -539,6 +558,13 @@ class YouTubeClient:
 
             # Calculate metrics
             videos = videos_response.get('items', [])
+
+            # LED 533: Processing video statistics
+            self.trail.light(Config.LED_YOUTUBE_START + 3, {
+                "action": "processing_statistics",
+                "videos_with_stats": len(videos)
+            })
+
             total_views = sum(
                 int(video['statistics'].get('viewCount', 0))
                 for video in videos
@@ -575,9 +601,9 @@ class YouTubeClient:
                 "videos": videos if fetch_purchase_intent else None  # For purchase intent analysis
             }
 
-            # Log success (exclude videos from LED - too verbose)
+            # LED 534: YouTube analysis complete
             log_result = {k: v for k, v in result.items() if k != 'videos'}
-            self.trail.light(Config.LED_YOUTUBE_START + 2, {
+            self.trail.light(Config.LED_YOUTUBE_START + 4, {
                 "action": "youtube_success",
                 "keyword": keyword,
                 **log_result
@@ -586,12 +612,18 @@ class YouTubeClient:
             return result
 
         except Exception as e:
-            self.trail.fail(Config.LED_YOUTUBE_START + 2, e)
+            # LED 535: YouTube API failure
+            self.trail.fail(Config.LED_YOUTUBE_START + 5, e)
+
             # FAIL LOUDLY - Don't hide API failures behind fake zero data
             error_msg = str(e)
 
             # Check for quota exceeded error
             if 'quotaExceeded' in error_msg or 'quota' in error_msg.lower():
+                self.trail.light(Config.LED_YOUTUBE_START + 6, {
+                    "action": "quota_exceeded",
+                    "error": "YouTube API daily quota limit reached"
+                })
                 raise ValueError(
                     f"YouTube API quota exceeded for today. "
                     f"Free tier limit: 10,000 units/day. "

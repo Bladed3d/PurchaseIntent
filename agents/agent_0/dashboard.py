@@ -123,7 +123,6 @@ class DashboardGenerator:
         .score-composite {{ color: #4CAF50; }}
         .score-trends {{ color: #2196F3; }}
         .score-reddit {{ color: #FF5722; }}
-        .score-youtube {{ color: #f44336; }}
         .confidence-badge {{
             display: inline-block;
             padding: 4px 12px;
@@ -176,7 +175,6 @@ class DashboardGenerator:
             scores = topic_data['scores']
             trends = topic_data.get('trends_data', {})
             reddit = topic_data.get('reddit_data', {})
-            youtube = topic_data.get('youtube_data', {})
 
             # Confidence badge
             confidence = scores['confidence']
@@ -212,8 +210,6 @@ class DashboardGenerator:
                     <div class="score-value score-reddit">{scores['reddit_score']}</div>
                 </div>
                 <div class="score-item">
-                    <div class="score-label">YouTube</div>
-                    <div class="score-value score-youtube">{scores['youtube_score']}</div>
                 </div>
             </div>
 
@@ -229,9 +225,6 @@ class DashboardGenerator:
                     {reddit.get('avg_engagement', 0):.0f} avg score
                 </div>
                 <div class="detail-item">
-                    <span class="detail-label">YouTube:</span>
-                    {youtube.get('total_videos', 0)} videos,
-                    {youtube.get('avg_views', 0):,.0f} avg views
                 </div>
             </div>
         </div>
@@ -240,7 +233,7 @@ class DashboardGenerator:
         html += """
         <div class="footer">
             <p>Purchase Intent System - Agent 0: Topic Research Agent</p>
-            <p>LED Range: 500-599 | Data sources: Google Trends, Reddit, YouTube</p>
+            <p>LED Range: 500-599 | Data sources: Google Trends, Reddit</p>
         </div>
     </div>
 </body>
@@ -818,10 +811,6 @@ class DashboardGenerator:
             const redditData = topicData.reddit_data || {{}};
             const topSubreddits = redditData.top_subreddits || [];
 
-            // YouTube data
-            const youtubeData = topicData.youtube_data || {{}};
-            const topChannels = youtubeData.top_channels || [];
-
             // Build insights HTML
             const insightsHTML = insights.length > 0
                 ? insights.map(insight => `<div style="margin: 4px 0;">${{insight}}</div>`).join('')
@@ -838,16 +827,6 @@ class DashboardGenerator:
                 `).join('')
                 : '<div style="color: #999; padding: 8px;">No Reddit data available</div>';
 
-            // Build YouTube channels HTML with clickable links (encoded for search)
-            const youtubeHTML = topChannels.length > 0
-                ? topChannels.map(channel => `
-                    <div style="padding: 8px; background: #f5f5f5; border-radius: 4px; margin: 4px 0;">
-                        <a href="https://youtube.com/results?search_query=${{encodeURIComponent(channel.name)}}" target="_blank" style="color: #667eea; text-decoration: none;">
-                            ${{channel.name}}
-                        </a> - ${{channel.count}} subscribers
-                    </div>
-                `).join('')
-                : '<div style="color: #999; padding: 8px;">No YouTube data available</div>';
 
             content.innerHTML = `
                 <div style="max-height: calc(85vh - 100px); overflow-y: auto; padding-right: 8px;">
@@ -897,21 +876,12 @@ class DashboardGenerator:
                         </div>
                     </div>
 
-                    <div style="margin-bottom: 16px;">
+                    <div style="margin-bottom: 8px;">
                         <div style="font-weight: 600; margin-bottom: 8px; display: flex; align-items: center;">
                             <span style="margin-right: 6px;">🔥</span> Top Reddit Communities
                         </div>
                         <div>
                             ${{redditHTML}}
-                        </div>
-                    </div>
-
-                    <div style="margin-bottom: 8px;">
-                        <div style="font-weight: 600; margin-bottom: 8px; display: flex; align-items: center;">
-                            <span style="margin-right: 6px;">📺</span> Top YouTube Channels
-                        </div>
-                        <div>
-                            ${{youtubeHTML}}
                         </div>
                     </div>
                 </div>
@@ -1024,10 +994,7 @@ class DashboardGenerator:
                                         lines.push(`├─ Trends: ${{breakdown.trends.data_points}} pts : ${{breakdown.trends.average_interest.toFixed(1)}} interest`);
                                     }}
                                     if (breakdown.reddit) {{
-                                        lines.push(`├─ Reddit: ${{breakdown.reddit.total_posts}} posts : ${{breakdown.reddit.avg_engagement.toFixed(0)}} engage`);
-                                    }}
-                                    if (breakdown.youtube) {{
-                                        lines.push(`└─ YouTube: ${{breakdown.youtube.total_videos}} videos : ${{breakdown.youtube.avg_views.toLocaleString()}} views`);
+                                        lines.push(`└─ Reddit: ${{breakdown.reddit.total_posts}} posts : ${{breakdown.reddit.avg_engagement.toFixed(0)}} engage`);
                                     }}
 
                                     // Add recency information

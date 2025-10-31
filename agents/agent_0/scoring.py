@@ -1,6 +1,6 @@
 """
 Agent 0 Topic Scoring Algorithm
-Combines signals from Google Trends, Reddit, and YouTube into composite demand score
+Combines signals from Google Trends and Reddit into composite demand score
 Now includes competition analysis for opportunity scoring
 """
 
@@ -21,14 +21,13 @@ class TopicScorer:
     def calculate_recency_score(
         self,
         trends_data: Dict,
-        reddit_data: Dict,
-        youtube_data: Dict
+        reddit_data: Dict
     ) -> Dict:
         """
         Calculate recency/urgency score based on content freshness
 
         Recency Score Components:
-        - Recent activity weight (60%): Posts/videos in last 30-90 days
+        - Recent activity weight (60%): Posts in last 30-90 days
         - Trend momentum (30%): Rising vs falling from Google Trends
         - Content freshness (10%): Average age of content
 
@@ -50,19 +49,6 @@ class TopicScorer:
         # Analyze Reddit timestamps
         reddit_timestamps = reddit_data.get('timestamps', [])
         for ts in reddit_timestamps:
-            age = now - ts
-            total_content += 1
-            total_age_days += (age / (24 * 60 * 60))
-
-            if age <= days_30:
-                recent_30_count += 1
-                recent_90_count += 1
-            elif age <= days_90:
-                recent_90_count += 1
-
-        # Analyze YouTube timestamps
-        youtube_timestamps = youtube_data.get('timestamps', [])
-        for ts in youtube_timestamps:
             age = now - ts
             total_content += 1
             total_age_days += (age / (24 * 60 * 60))
@@ -119,8 +105,7 @@ class TopicScorer:
     def calculate_data_richness(
         self,
         trends_data: Dict,
-        reddit_data: Dict,
-        youtube_data: Dict
+        reddit_data: Dict
     ) -> Dict:
         """
         Calculate data richness score based on volume and quality of data sources
@@ -167,24 +152,6 @@ class TopicScorer:
                 'richness': round(reddit_richness, 1),
                 'total_posts': reddit_posts,
                 'avg_engagement': reddit_engagement
-            }
-
-        # YouTube richness (0-100)
-        youtube_videos = youtube_data.get('total_videos', 0)
-        youtube_views = youtube_data.get('avg_views', 0)
-
-        if youtube_videos > 0:
-            # More videos + higher views = richer
-            youtube_richness = min(
-                (youtube_videos / 50) * 20 +  # Video volume (50 videos = good sample)
-                (youtube_views / 1000000) * 80,  # View quality (1M views = rich)
-                100
-            )
-            scores.append(youtube_richness)
-            breakdown['youtube'] = {
-                'richness': round(youtube_richness, 1),
-                'total_videos': youtube_videos,
-                'avg_views': youtube_views
             }
 
         # Overall richness = average of available sources
@@ -278,52 +245,10 @@ class TopicScorer:
         total = volume_score + engagement_score + diversity_bonus
         return min(total, 100.0)
 
-    def normalize_youtube_score(self, youtube_data: Dict) -> float:
-        """
-        Normalize YouTube data to 0-100 score
-
-        Considers:
-        - Number of videos (content volume)
-        - Total/average views (audience size)
-        - Channel diversity (not dominated by single creator)
-        """
-        total_videos = youtube_data.get('total_videos', 0)
-        avg_views = youtube_data.get('avg_views', 0)
-        top_channels = youtube_data.get('top_channels', [])
-
-        if total_videos == 0:
-            return 0.0
-
-        # Video volume score
-        if total_videos >= 20:
-            volume_score = 40
-        elif total_videos >= 10:
-            volume_score = 30
-        else:
-            volume_score = total_videos * 2
-
-        # View count score (logarithmic scale)
-        # 10K avg = 30, 100K avg = 50, 1M+ avg = 70
-        if avg_views >= 1000000:
-            view_score = 70
-        elif avg_views >= 100000:
-            view_score = 50
-        elif avg_views >= 10000:
-            view_score = 30
-        else:
-            view_score = min(avg_views / 500, 20)
-
-        # Channel diversity bonus
-        diversity_bonus = min(len(top_channels) * 2, 10)
-
-        total = volume_score + view_score + diversity_bonus
-        return min(total, 100.0)
-
     def calculate_composite_score(
         self,
         trends_data: Dict,
-        reddit_data: Dict,
-        youtube_data: Dict
+        reddit_data: Dict
     ) -> Dict:
         """
         Calculate weighted composite demand score with competition analysis
@@ -332,7 +257,6 @@ class TopicScorer:
         - composite_score: 0-100 overall demand score
         - trends_score: normalized Google Trends score
         - reddit_score: normalized Reddit score
-        - youtube_score: normalized YouTube score
         - confidence: 0-100 confidence in score accuracy
         - competition: dict with competition metrics
         - opportunity: dict with opportunity score and recommendation
@@ -345,30 +269,26 @@ class TopicScorer:
         # Normalize each source (DEMAND scoring)
         trends_score = self.normalize_trends_score(trends_data)
         reddit_score = self.normalize_reddit_score(reddit_data)
-        youtube_score = self.normalize_youtube_score(youtube_data)
 
-        # Weighted composite DEMAND score
+        # Weighted composite DEMAND score (50/50 split)
         composite = (
             trends_score * Config.WEIGHT_GOOGLE_TRENDS +
-            reddit_score * Config.WEIGHT_REDDIT +
-            youtube_score * Config.WEIGHT_YOUTUBE
+            reddit_score * Config.WEIGHT_REDDIT
         )
 
         # Calculate confidence based on data availability
         sources_with_data = sum([
             1 if trends_data.get('data_points', 0) > 0 else 0,
-            1 if reddit_data.get('total_posts', 0) > 0 else 0,
-            1 if youtube_data.get('total_videos', 0) > 0 else 0
+            1 if reddit_data.get('total_posts', 0) > 0 else 0
         ])
 
-        # Confidence: 3 sources = 100%, 2 sources = 70%, 1 source = 40%
-        confidence = {3: 100, 2: 70, 1: 40, 0: 0}[sources_with_data]
+        # Confidence: 2 sources = 100%, 1 source = 60%, 0 sources = 0%
+        confidence = {2: 100, 1: 60, 0: 0}[sources_with_data]
 
         # Analyze COMPETITION
         competition = self.competition_analyzer.calculate_overall_competition(
             trends_data,
-            reddit_data,
-            youtube_data
+            reddit_data
         )
 
         # Calculate OPPORTUNITY score (demand vs competition)
@@ -381,29 +301,25 @@ class TopicScorer:
         insights = self.competition_analyzer.get_competitive_insights(
             trends_data,
             reddit_data,
-            youtube_data,
             opportunity
         )
 
         # Calculate audience size (for bubble sizing in visualization)
         audience_size = self.competition_analyzer.calculate_audience_size(
             trends_data,
-            reddit_data,
-            youtube_data
+            reddit_data
         )
 
         # Calculate data richness (for confidence and visualization)
         richness = self.calculate_data_richness(
             trends_data,
-            reddit_data,
-            youtube_data
+            reddit_data
         )
 
         # Calculate recency/urgency (NEW)
         recency = self.calculate_recency_score(
             trends_data,
-            reddit_data,
-            youtube_data
+            reddit_data
         )
 
         # Classify zone based on demand and competition
@@ -414,7 +330,6 @@ class TopicScorer:
             "composite_score": round(composite, 2),
             "trends_score": round(trends_score, 2),
             "reddit_score": round(reddit_score, 2),
-            "youtube_score": round(youtube_score, 2),
             "confidence": confidence,
             "sources_with_data": sources_with_data,
 

@@ -1,6 +1,6 @@
 """
 Agent 0 API Clients
-Handles integration with Google Trends, Reddit, and YouTube APIs
+Handles integration with Google Trends and Reddit APIs
 """
 
 import time
@@ -11,7 +11,6 @@ from datetime import datetime, timedelta
 from typing import Dict, List, Optional
 from pytrends.request import TrendReq
 import praw
-from googleapiclient.discovery import build
 
 from lib.breadcrumb_system import BreadcrumbTrail
 from .config import Agent0Config as Config
@@ -443,113 +442,3 @@ class RedditClient:
             }
 
 
-class YouTubeClient:
-    """YouTube Data API v3 client"""
-
-    def __init__(self, trail: BreadcrumbTrail):
-        self.trail = trail
-        self.youtube = build('youtube', 'v3', developerKey=Config.YOUTUBE_API_KEY)
-
-    def search_videos(self, keyword: str) -> Dict:
-        """
-        Search YouTube for keyword and analyze video metrics
-
-        Returns dict with:
-        - total_videos: number of videos found
-        - total_views: sum of view counts
-        - avg_views: average views per video
-        - top_channels: list of most relevant channels
-        """
-        self.trail.light(Config.LED_YOUTUBE_START, {
-            "action": "search_youtube",
-            "keyword": keyword
-        })
-
-        try:
-            # Search for videos
-            search_response = self.youtube.search().list(
-                q=keyword,
-                part='id,snippet',
-                type='video',
-                maxResults=Config.MAX_YOUTUBE_VIDEOS,
-                order='relevance'
-            ).execute()
-
-            # Respect rate limits
-            time.sleep(Config.RATE_LIMIT_DELAY)
-
-            video_ids = [item['id']['videoId'] for item in search_response.get('items', [])]
-
-            if not video_ids:
-                self.trail.light(Config.LED_YOUTUBE_START + 1, {
-                    "action": "no_videos",
-                    "keyword": keyword
-                })
-                return {
-                    "total_videos": 0,
-                    "total_views": 0,
-                    "avg_views": 0,
-                    "top_channels": []
-                }
-
-            # Get video statistics
-            videos_response = self.youtube.videos().list(
-                id=','.join(video_ids),
-                part='statistics,snippet'
-            ).execute()
-
-            # Calculate metrics
-            videos = videos_response.get('items', [])
-            total_views = sum(
-                int(video['statistics'].get('viewCount', 0))
-                for video in videos
-            )
-            avg_views = total_views / len(videos) if videos else 0
-
-            # Find top channels
-            channel_counts = {}
-            for video in videos:
-                channel = video['snippet']['channelTitle']
-                channel_counts[channel] = channel_counts.get(channel, 0) + 1
-
-            top_channels = sorted(
-                channel_counts.items(),
-                key=lambda x: x[1],
-                reverse=True
-            )[:5]
-
-            # Collect timestamp data for recency analysis (ISO 8601 format from YouTube)
-            from datetime import datetime
-            timestamps = []
-            for video in videos:
-                published_at = video['snippet'].get('publishedAt', '')
-                if published_at:
-                    # Convert ISO 8601 to Unix timestamp
-                    dt = datetime.fromisoformat(published_at.replace('Z', '+00:00'))
-                    timestamps.append(dt.timestamp())
-
-            result = {
-                "total_videos": len(videos),
-                "total_views": total_views,
-                "avg_views": round(avg_views, 2),
-                "top_channels": [{"name": name, "count": count} for name, count in top_channels],
-                "timestamps": timestamps  # NEW: for recency calculation
-            }
-
-            self.trail.light(Config.LED_YOUTUBE_START + 2, {
-                "action": "youtube_success",
-                "keyword": keyword,
-                **result
-            })
-
-            return result
-
-        except Exception as e:
-            self.trail.fail(Config.LED_YOUTUBE_START + 2, e)
-            return {
-                "total_videos": 0,
-                "total_views": 0,
-                "avg_views": 0,
-                "top_channels": [],
-                "error": str(e)
-            }

@@ -182,103 +182,11 @@ class CompetitionAnalyzer:
 
         return min(max(base_competition, 0), 100.0)
 
-    def analyze_youtube_competition(self, youtube_data: Dict) -> float:
-        """
-        Analyze YouTube for content saturation and quality
-
-        Low competition signals:
-        - Few videos despite high views (gap!)
-        - Amateur/low-production content
-        - High views on simple videos (unmet need)
-        - Few recent uploads
-
-        High competition signals:
-        - Many professional channels
-        - High production value
-        - Consistent upload schedule
-        - Established creators dominating
-
-        Uses granular metrics to avoid quantization:
-        - Engagement rate (views per video)
-        - Channel diversity index
-        - View distribution variance
-
-        Returns: 0-100 (higher = more competitive)
-        """
-        total_videos = youtube_data.get('total_videos', 0)
-        avg_views = youtube_data.get('avg_views', 0)
-        top_channels = youtube_data.get('top_channels', [])
-
-        if total_videos == 0:
-            # No videos = either gap or no interest
-            # Combined with demand score will determine
-            return 30.0  # Assume low competition (potential gap)
-
-        # GRANULAR METRIC 1: Engagement Rate (views per video)
-        # This varies continuously even when total_videos is always 20
-        engagement_rate = avg_views / max(total_videos, 1)
-
-        # Scale engagement rate to competition score
-        # Low views/video = low competition (amateur content)
-        # High views/video = high competition (professional quality)
-        if engagement_rate > 1000000:  # 1M+ views per video
-            engagement_score = 85  # Very professional/competitive
-        elif engagement_rate > 500000:  # 500K+ views per video
-            engagement_score = 70
-        elif engagement_rate > 100000:  # 100K+ views per video
-            engagement_score = 55
-        elif engagement_rate > 50000:   # 50K+ views per video
-            engagement_score = 40
-        elif engagement_rate > 10000:   # 10K+ views per video
-            engagement_score = 25
-        else:  # < 10K views per video
-            engagement_score = 15  # Low competition (amateur)
-
-        # GRANULAR METRIC 2: Channel Diversity Index
-        # More unique channels = more competitive
-        channel_count = len(top_channels)
-        if channel_count == 0:
-            diversity_score = 20
-        else:
-            # Normalize: 1 channel = low competition, 5+ = high competition
-            diversity_ratio = channel_count / max(total_videos, 1)
-            diversity_score = min(diversity_ratio * 100, 100)
-
-        # GRANULAR METRIC 3: Content Saturation Score
-        # Video count normalized (but now just one component)
-        if total_videos >= 100:
-            saturation_score = 90
-        elif total_videos >= 50:
-            saturation_score = 70
-        elif total_videos >= 20:
-            saturation_score = 50
-        elif total_videos >= 10:
-            saturation_score = 30
-        else:
-            saturation_score = 15
-
-        # Weighted composite (emphasize engagement over count)
-        # Engagement: 50% (varies most, breaks quantization)
-        # Diversity: 30% (varies based on channels)
-        # Saturation: 20% (count-based, less variable)
-        base_competition = (
-            engagement_score * 0.50 +
-            diversity_score * 0.30 +
-            saturation_score * 0.20
-        )
-
-        # Opportunity gap detection
-        # High views per video + few videos = opportunity gap
-        if total_videos < 30 and engagement_rate > 500000:
-            base_competition -= 15  # Significant opportunity
-
-        return min(max(base_competition, 0), 100.0)
 
     def calculate_overall_competition(
         self,
         trends_data: Dict,
-        reddit_data: Dict,
-        youtube_data: Dict
+        reddit_data: Dict
     ) -> Dict:
         """
         Calculate overall competition score from all sources
@@ -286,7 +194,6 @@ class CompetitionAnalyzer:
         Returns dict with:
         - trends_competition: 0-100
         - reddit_competition: 0-100
-        - youtube_competition: 0-100
         - overall_competition: 0-100 (weighted average)
         - competition_level: 'low', 'moderate', 'high', 'very_high'
         """
@@ -296,10 +203,9 @@ class CompetitionAnalyzer:
 
         trends_comp = self.analyze_trends_competition(trends_data)
         reddit_comp = self.analyze_reddit_competition(reddit_data)
-        youtube_comp = self.analyze_youtube_competition(youtube_data)
 
-        # Weighted average (equal weights for now)
-        overall = (trends_comp + reddit_comp + youtube_comp) / 3.0
+        # Weighted average (50/50 split)
+        overall = (trends_comp + reddit_comp) / 2.0
 
         # Categorize competition level
         if overall < 30:
@@ -322,7 +228,6 @@ class CompetitionAnalyzer:
         result = {
             "trends_competition": round(trends_comp, 2),
             "reddit_competition": round(reddit_comp, 2),
-            "youtube_competition": round(youtube_comp, 2),
             "overall_competition": round(overall, 2),
             "competition_level": level,
             "competition_emoji": emoji,
@@ -417,8 +322,7 @@ class CompetitionAnalyzer:
     def calculate_audience_size(
         self,
         trends_data: Dict,
-        reddit_data: Dict,
-        youtube_data: Dict
+        reddit_data: Dict
     ) -> int:
         """
         Calculate total addressable market size (audience reach)
@@ -427,27 +331,22 @@ class CompetitionAnalyzer:
         Used for bubble sizing in visualization.
 
         Formula:
-        - Google Trends average interest × 100,000 (represents search volume proxy)
-        - Reddit total engagement (posts × avg score)
-        - YouTube total views
+        - Google Trends average interest × 150,000 (represents search volume proxy, increased weight)
+        - Reddit total engagement × 2 (posts × avg score, doubled to compensate for YouTube removal)
 
         Returns: Integer representing estimated audience size
         """
-        # Google Trends: Average interest as search volume proxy
+        # Google Trends: Average interest as search volume proxy (increased weight)
         trends_interest = trends_data.get('average_interest', 0)
-        trends_audience = int(trends_interest * 100000)  # Scale factor
+        trends_audience = int(trends_interest * 150000)  # Increased scale factor
 
-        # Reddit: Engagement metric (posts × average score)
+        # Reddit: Engagement metric (posts × average score, doubled weight)
         reddit_posts = reddit_data.get('total_posts', 0)
         reddit_engagement = reddit_data.get('avg_engagement', 0)
-        reddit_audience = int(reddit_posts * reddit_engagement)
+        reddit_audience = int(reddit_posts * reddit_engagement * 2)  # Doubled weight
 
-        # YouTube: Total views across all videos
-        youtube_views = youtube_data.get('total_videos', 0) * youtube_data.get('avg_views', 0)
-        youtube_audience = int(youtube_views)
-
-        # Total addressable audience (sum of all channels)
-        total_audience = trends_audience + reddit_audience + youtube_audience
+        # Total addressable audience (sum of both channels)
+        total_audience = trends_audience + reddit_audience
 
         return max(total_audience, 1000)  # Minimum 1K for visibility
 
@@ -455,7 +354,6 @@ class CompetitionAnalyzer:
         self,
         trends_data: Dict,
         reddit_data: Dict,
-        youtube_data: Dict,
         opportunity: Dict
     ) -> List[str]:
         """
@@ -494,16 +392,14 @@ class CompetitionAnalyzer:
         elif trend_dir == 'falling':
             insights.append("🔴 Declining trend - market may be dying")
 
-        # Content gap insights
-        videos = youtube_data.get('total_videos', 0)
-        avg_views = youtube_data.get('avg_views', 0)
-        if videos < 30 and avg_views > 100000:
-            insights.append("✅ Content gap - high views, few videos!")
-
-        # Reddit insights
+        # Reddit insights - purchase intent signals
         reddit_posts = reddit_data.get('total_posts', 0)
         reddit_engagement = reddit_data.get('avg_engagement', 0)
         if reddit_posts > 30 and reddit_engagement > 1000:
-            insights.append("✅ Active community with pain points")
+            insights.append("✅ Active community with strong engagement")
+
+        # High engagement = willingness to pay attention (proxy for purchase intent)
+        if reddit_engagement > 2000:
+            insights.append("✅ High engagement suggests purchase intent")
 
         return insights

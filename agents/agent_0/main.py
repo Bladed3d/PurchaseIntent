@@ -2,9 +2,8 @@
 Agent 0: Topic Research Agent - Main Entry Point
 
 Discovers and validates demand for product topics by analyzing:
-- Google Trends (search volume patterns)
-- Reddit (community discussions and pain points)
-- YouTube (video engagement and content volume)
+- Google Trends (search volume patterns and trend direction)
+- Reddit (community discussions, pain points, and purchase intent signals)
 
 Usage:
     python agents/agent_0/main.py <topic1> <topic2> ... <topicN>
@@ -24,7 +23,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../.
 
 from lib.breadcrumb_system import BreadcrumbTrail
 from agents.agent_0.config import Agent0Config as Config
-from agents.agent_0.api_clients import GoogleTrendsClient, RedditClient, YouTubeClient
+from agents.agent_0.api_clients import GoogleTrendsClient, RedditClient
 from agents.agent_0.api_clients_playwright import GoogleTrendsPlaywrightClient
 from agents.agent_0.api_clients_websearch import GoogleTrendsWebSearchClient
 from agents.agent_0.agent_results_loader import AgentResultsLoader
@@ -121,7 +120,6 @@ def main(topics: List[str], method: str = "pytrends", parent_topic: str = None, 
     agent_loader = AgentResultsLoader(trail)
 
     reddit_client = RedditClient(trail)
-    youtube_client = YouTubeClient(trail)
     scorer = TopicScorer(trail)
     dashboard_gen = DashboardGenerator(trail)
 
@@ -190,19 +188,14 @@ def main(topics: List[str], method: str = "pytrends", parent_topic: str = None, 
             })
 
         # Query Reddit
-        print("  [2/3] Querying Reddit...")
+        print("  [2/2] Querying Reddit...")
         reddit_data = reddit_client.search_topic(topic)
-
-        # Query YouTube
-        print("  [3/3] Querying YouTube...")
-        youtube_data = youtube_client.search_videos(topic)
 
         # Calculate scores
         print("  [*] Calculating composite score...")
         scores = scorer.calculate_composite_score(
             trends_data,
-            reddit_data,
-            youtube_data
+            reddit_data
         )
 
         # Store results (include description if available from agent results)
@@ -210,8 +203,7 @@ def main(topics: List[str], method: str = "pytrends", parent_topic: str = None, 
             "topic": topic,
             "scores": scores,
             "trends_data": trends_data,
-            "reddit_data": reddit_data,
-            "youtube_data": youtube_data
+            "reddit_data": reddit_data
         }
 
         # Add description from agent results if available

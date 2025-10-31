@@ -206,6 +206,16 @@ class DrillDownTrail:
         # Create nodes for all topics
         new_nodes = []
         for topic_data in topics:
+            # Deep copy topic_data and remove non-JSON-serializable objects
+            import copy
+            clean_data = copy.deepcopy(topic_data)
+
+            # Remove Reddit Submission objects (stored in trends_data and reddit_data)
+            if 'trends_data' in clean_data and 'posts' in clean_data['trends_data']:
+                del clean_data['trends_data']['posts']
+            if 'reddit_data' in clean_data and 'posts' in clean_data['reddit_data']:
+                del clean_data['reddit_data']['posts']
+
             node = {
                 "id": f"{topic_data['topic'].replace(' ', '_')}_{session_time}",
                 "topic": topic_data['topic'],
@@ -213,7 +223,7 @@ class DrillDownTrail:
                 "level": 0,  # Will be updated based on parent
                 "researched_at": session_time,
                 "output_file": output_file,
-                "data": topic_data,
+                "data": clean_data,
                 "children": []
             }
             new_nodes.append(node)

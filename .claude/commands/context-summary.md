@@ -37,14 +37,16 @@ This creates:
 Now use the session-summarizer agent to extract what matters:
 
 ```
-Use the session-summarizer agent to analyze the most recent session file in Context/{date}/
-and create a HANDOFF-{date}.md with:
+Use the session-summarizer agent to find and analyze the most recent session file in Context/
+(it may be from a previous date, not necessarily today).
+
+Create a HANDOFF-{session-date}.md in the same directory as the session file with:
 - Decisions made
 - What was ruled out
 - Next 3 actions
 - Blockers
 
-If a HANDOFF file already exists for today, APPEND the new summary to it (don't overwrite).
+If a HANDOFF file already exists for that session's date, APPEND the new summary to it (don't overwrite).
 Use a separator like "--- Session [timestamp] ---" between entries.
 ```
 
@@ -61,8 +63,8 @@ User: [Runs python save-session.py]
 
 Claude:
 [Automatically invokes session-summarizer agent]
-[Reads most recent session file]
-[Creates or appends to HANDOFF file]
+[Finds and reads most recent session file (may be from previous date)]
+[Creates or appends to HANDOFF file in same directory as session]
 [Reports: "Session saved + summary appended to Context/2025-10-22/HANDOFF-2025-10-22.md"]
 ```
 

@@ -1,23 +1,16 @@
 {
-  "selected_topic": "romance novels",
-  "confidence": 70,
-  "composite_score": 62.0,
-  "competition_score": 45.3,
-  "opportunity_score": 33.91,
-  "audience_size": 6522063,
-  "zone": "gold_mine",
+  "selected_topic": "test topic",
+  "confidence": 100,
+  "composite_score": 93.6,
   "sources_analyzed": 2,
   "all_topics": [
     {
       "rank": 1,
-      "topic": "romance novels",
-      "demand": 62.0,
-      "competition": 45.3,
-      "opportunity": 33.91,
-      "zone": "gold_mine",
-      "confidence": 70
+      "topic": "test topic",
+      "score": 93.6,
+      "confidence": 100
     }
   ],
-  "timestamp": "2025-10-24T01:28:45.620437",
+  "timestamp": "2025-10-31T13:59:52.077190",
   "agent": "Agent0_TopicResearch"
 }

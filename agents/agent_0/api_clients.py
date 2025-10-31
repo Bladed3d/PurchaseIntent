@@ -249,14 +249,19 @@ class GoogleTrendsClient:
 
             except Exception as e:
                 self.trail.fail(Config.LED_GOOGLE_TRENDS_START + 2, e)
-                # Return empty results for failed keyword
-                results[keyword] = {
-                    "average_interest": 0,
-                    "peak_interest": 0,
-                    "trend_direction": "error",
-                    "data_points": 0,
-                    "error": str(e)[:100]
-                }
+                # FAIL LOUDLY - Don't hide API failures behind fake zero data
+                error_msg = str(e)
+                if '429' in error_msg or 'Too Many Requests' in error_msg:
+                    raise ValueError(
+                        f"Google Trends rate limit exceeded for '{keyword}'. "
+                        f"This means Google is blocking requests temporarily. "
+                        f"Wait 60 minutes and try again, or use cached data from previous runs. "
+                        f"Check cache/ directory for available cached keywords."
+                    ) from e
+                else:
+                    raise ValueError(
+                        f"Google Trends API failed for '{keyword}': {error_msg[:200]}"
+                    ) from e
 
         self.trail.light(Config.LED_GOOGLE_TRENDS_START + 2, {
             "action": "batch_query_complete",
@@ -442,12 +447,11 @@ class RedditClient:
 
         except Exception as e:
             self.trail.fail(Config.LED_REDDIT_START + 2, e)
-            return {
-                "total_posts": 0,
-                "total_engagement": 0,
-                "avg_engagement": 0,
-                "top_subreddits": [],
-                "error": str(e)
-            }
+            # FAIL LOUDLY - Don't hide API failures behind fake zero data
+            error_msg = str(e)
+            raise ValueError(
+                f"Reddit API failed for '{keyword}': {error_msg[:200]}. "
+                f"Check REDDIT_CLIENT_ID, REDDIT_CLIENT_SECRET, and REDDIT_USER_AGENT in .env file."
+            ) from e
 
 

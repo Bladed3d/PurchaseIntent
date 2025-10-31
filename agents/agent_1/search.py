@@ -14,7 +14,8 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from lib.breadcrumb_system import BreadcrumbTrail
 from agents.agent_1.config import Agent1Config as Config
 from agents.agent_1.api_clients import RedditClient, YouTubeClient
-from agents.agent_1.playwright_scraper import AmazonScraper, GoodreadsScraper
+from agents.agent_1.amazon_api import AmazonProductAPI
+from agents.agent_1.playwright_scraper import GoodreadsScraper
 
 
 class MultiSourceSearch:
@@ -23,7 +24,7 @@ class MultiSourceSearch:
     def __init__(self, trail: BreadcrumbTrail):
         self.trail = trail
         self.reddit_client = RedditClient(trail)
-        self.amazon_scraper = AmazonScraper(trail)
+        self.amazon_api = AmazonProductAPI(trail)
 
         # Optional clients (fail only when used if not configured)
         self.youtube_client = None
@@ -181,12 +182,12 @@ class MultiSourceSearch:
         return queries
 
     def _safe_search_amazon(self, query: str) -> List[Dict[str, Any]]:
-        """Wrapper for Amazon search with error handling"""
+        """Wrapper for Amazon API search with error handling"""
         try:
-            return self.amazon_scraper.search_products(query, Config.MAX_AMAZON_RESULTS)
+            return self.amazon_api.search_products(query, Config.MAX_AMAZON_RESULTS)
         except Exception as e:
             # Re-raise to propagate to executor
-            raise ValueError(f"Amazon search failed: {str(e)}")
+            raise ValueError(f"Amazon API search failed: {str(e)}")
 
     def _safe_search_reddit(self, query: str) -> List[Dict[str, Any]]:
         """Wrapper for Reddit search with error handling"""

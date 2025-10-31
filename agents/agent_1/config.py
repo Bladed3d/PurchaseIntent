@@ -21,6 +21,11 @@ class Agent1Config:
     # YouTube API (optional - for video discovery)
     YOUTUBE_API_KEY = os.getenv('YOUTUBE_API_KEY')
 
+    # Amazon Product Advertising API (required for product search)
+    AMAZON_ACCESS_KEY = os.getenv('AMAZON_ACCESS_KEY')
+    AMAZON_SECRET_KEY = os.getenv('AMAZON_SECRET_KEY')
+    AMAZON_ASSOCIATE_TAG = os.getenv('AMAZON_ASSOCIATE_TAG')
+
     # Rate Limiting
     RATE_LIMIT_DELAY = float(os.getenv('AGENT_1_RATE_LIMIT_DELAY', '2.0'))
     REDDIT_DELAY = 2.0  # Delay between Reddit API calls
@@ -79,6 +84,14 @@ class Agent1Config:
             missing.append('REDDIT_CLIENT_ID')
         if not cls.REDDIT_CLIENT_SECRET:
             missing.append('REDDIT_CLIENT_SECRET')
+
+        # Amazon is required for product search
+        if not cls.AMAZON_ACCESS_KEY:
+            missing.append('AMAZON_ACCESS_KEY')
+        if not cls.AMAZON_SECRET_KEY:
+            missing.append('AMAZON_SECRET_KEY')
+        if not cls.AMAZON_ASSOCIATE_TAG:
+            missing.append('AMAZON_ASSOCIATE_TAG')
 
         # YouTube is optional (can skip if not available)
         # No validation check - fails loudly when used if missing

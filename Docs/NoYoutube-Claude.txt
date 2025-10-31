@@ -1,0 +1,98 @@
+YouTube API Removal - System Architecture Decision
+====================================================
+
+Date: 2025-10-30
+Context: YouTube API quota increase denied by Google
+
+## Decision: Remove YouTube API Entirely
+
+### Rationale
+
+1. **YouTube Quota Denial**
+   - Google denied quota increase request
+   - Default 10,000 units/day = ~100 searches
+   - New Google process makes approval harder
+   - Creates friction in research workflow
+
+2. **Better Purchase Intent Signals Without YouTube**
+   - **Reddit**: Direct purchase discussions ("Where to buy...", "I'd pay for...")
+   - **Google Trends**: Search volume and trend direction
+   - **YouTube**: Vanity metrics (views, subscribers) - weak purchase intent signal
+
+3. **Removed Constraints**
+   - No API quotas to manage
+   - No rate limiting friction
+   - Unlimited research iterations
+   - Simpler system architecture
+
+### Implementation Changes
+
+**Removed:**
+- YouTubeClient class (api_clients.py)
+- YouTube scoring methods (scoring.py)
+- YouTube competition analysis (competition_analyzer.py)
+- YouTube dashboard UI elements (dashboard.py)
+- YouTube API credentials (config.py, .env)
+
+**Updated:**
+- Scoring weights: 50% Google Trends, 50% Reddit (was 35/35/30)
+- Confidence: 2 sources = 100%, 1 source = 60% (was 3/2/1 = 100/70/40)
+- Audience size calculation: Increased weights for Trends (150K) and Reddit (2x)
+- Reddit insights: Added purchase intent detection
+
+**Code Reduction:**
+- Removed: 429 lines
+- Added: 98 lines
+- Net: -331 lines (cleaner codebase)
+
+### Testing
+
+Verified with "productivity apps" query:
+- Composite Score: 98.40
+- Confidence: 100% (Reddit + AI Agent data)
+- Competition: 69.75 (High)
+- Opportunity: 29.77 (Avoid - saturated market)
+
+### Why This Is Better
+
+**Reddit > YouTube for purchase intent:**
+- "Best productivity app for ADHD?" ’ Direct problem + solution seeking
+- "I'd pay $10/month for X feature" ’ Direct willingness to pay
+- High engagement scores ’ Community cares about topic
+- Subreddit overlap ’ Adjacent market opportunities
+
+**Google Trends > YouTube for demand:**
+- Search volume trends ’ Real demand signals
+- Rising/falling trends ’ Market timing
+- Geographic data ’ Where to target
+- Related queries ’ Adjacent opportunities
+
+**YouTube was:**
+- Subscriber counts ’ Brand awareness (not purchase intent)
+- View counts ’ Content popularity (not willingness to pay)
+- API quotas ’ Research friction
+- Maintenance burden ’ Complex error handling
+
+### Future Considerations
+
+If we ever need video content signals:
+1. Use RSS feeds (no API key, limited data)
+2. Parse public search results (fragile, may break)
+3. Focus on Reddit video discussions instead
+
+**Do NOT add YouTube back unless:**
+- Google approves unlimited quota (unlikely)
+- Strong evidence YouTube signals > Reddit purchase intent (unlikely)
+- User explicitly requests and accepts quota friction (ask first)
+
+### Related Files
+
+- `Docs/Grok-NoYoutube.txt` - Grok's analysis of the situation
+- `Docs/Grok-youtube-limits01.md` - Original YouTube quota discussion
+- Commit: 8f3f2aa "Remove YouTube API - focus on Reddit + Google Trends only"
+
+### Key Takeaway
+
+**You don't need more data sources. You need BETTER data sources.**
+
+Reddit + Google Trends provide stronger purchase intent signals than Reddit + YouTube + Google Trends ever did, with zero API quotas and simpler code.

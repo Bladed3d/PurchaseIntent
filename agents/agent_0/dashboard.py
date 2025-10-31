@@ -320,7 +320,7 @@ class DashboardGenerator:
             ranked_topics: List of topic data dicts (sorted by score)
             tree_data: Tree structure from drill_trail.json
             output_path: Path to save HTML file
-            queue_manager: Optional queue manager (not used in dashboard generation)
+            queue_manager: Optional queue manager for quota visualization
 
         Returns:
             Path to generated HTML file
@@ -345,6 +345,9 @@ class DashboardGenerator:
 
         # Build tree HTML
         tree_html = self._build_tree_html(tree_data.get('root_nodes', []))
+
+        # Calculate quota usage
+        quota_html = self._build_quota_html(queue_manager)
 
         # Build HTML
         html = f"""<!DOCTYPE html>
@@ -400,6 +403,51 @@ class DashboardGenerator:
             opacity: 0.9;
             margin-top: 5px;
         }}
+
+        .quota-section {{
+            background: #f9f9f9;
+            padding: 15px 20px;
+            border-bottom: 1px solid #e0e0e0;
+            position: sticky;
+            top: 76px;
+            z-index: 99;
+        }}
+
+        .quota-title {{
+            font-size: 13px;
+            font-weight: 600;
+            color: #555;
+            margin-bottom: 12px;
+        }}
+
+        .quota-bar {{
+            margin-bottom: 10px;
+        }}
+
+        .quota-label {{
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            color: #666;
+            margin-bottom: 4px;
+        }}
+
+        .quota-progress {{
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 4px;
+            overflow: hidden;
+        }}
+
+        .quota-fill {{
+            height: 100%;
+            transition: width 0.3s;
+            border-radius: 4px;
+        }}
+
+        .quota-fill.low {{ background: linear-gradient(90deg, #4CAF50, #66BB6A); }}
+        .quota-fill.medium {{ background: linear-gradient(90deg, #FF9800, #FFB74D); }}
+        .quota-fill.high {{ background: linear-gradient(90deg, #f44336, #e57373); }}
 
         .tree-content {{
             padding: 20px;
@@ -579,6 +627,7 @@ class DashboardGenerator:
                 <h2>🌳 Topic Hierarchy</h2>
                 <div class="subtitle">Click to explore, expand to drill down</div>
             </div>
+            {quota_html}
             <div class="tree-content">
                 {tree_html}
             </div>
@@ -1168,6 +1217,82 @@ class DashboardGenerator:
         })
 
         return output_path
+
+    def _build_quota_html(self, queue_manager=None) -> str:
+        """Build HTML for API quota visualization"""
+        if not queue_manager:
+            return ""  # No quota display if queue_manager not provided
+
+        # Calculate quota metrics
+        # Reddit: Effectively unlimited (3,600/hour)
+        reddit_used = 0  # Reddit doesn't track quota
+        reddit_limit = 3600
+        reddit_pct = 0
+
+        # Google Trends: Conservative limit (15/hour)
+        try:
+            api_stats = queue_manager.get_api_usage_stats()
+            trends_used = api_stats.get('actual_api_calls', 0)
+        except:
+            trends_used = 0
+        trends_limit = 15
+        trends_pct = min((trends_used / trends_limit) * 100, 100) if trends_limit > 0 else 0
+
+        # YouTube: 10,000 units/day (estimate based on typical usage)
+        youtube_used = 0  # Would need YouTube client to track this
+        youtube_limit = 10000
+        youtube_pct = 0
+
+        # Determine color classes based on usage
+        def get_quota_class(pct):
+            if pct < 50:
+                return 'low'
+            elif pct < 80:
+                return 'medium'
+            else:
+                return 'high'
+
+        trends_class = get_quota_class(trends_pct)
+        reddit_class = 'low'
+        youtube_class = 'low'
+
+        html = f'''
+            <div class="quota-section">
+                <div class="quota-title">📊 API Quota Usage (Last Hour)</div>
+
+                <div class="quota-bar">
+                    <div class="quota-label">
+                        <span>🔍 Google Trends</span>
+                        <span>{trends_used}/{trends_limit} calls</span>
+                    </div>
+                    <div class="quota-progress">
+                        <div class="quota-fill {trends_class}" style="width: {trends_pct}%"></div>
+                    </div>
+                </div>
+
+                <div class="quota-bar">
+                    <div class="quota-label">
+                        <span>🗨️ Reddit API</span>
+                        <span>Unlimited</span>
+                    </div>
+                    <div class="quota-progress">
+                        <div class="quota-fill {reddit_class}" style="width: 5%"></div>
+                    </div>
+                </div>
+
+                <div class="quota-bar">
+                    <div class="quota-label">
+                        <span>📺 YouTube API</span>
+                        <span>{youtube_used}/{youtube_limit} units/day</span>
+                    </div>
+                    <div class="quota-progress">
+                        <div class="quota-fill {youtube_class}" style="width: {youtube_pct}%"></div>
+                    </div>
+                </div>
+            </div>
+        '''
+
+        return html
 
     def _build_tree_html(self, nodes: List[Dict], level: int = 0) -> str:
         """Build HTML for tree nodes recursively"""

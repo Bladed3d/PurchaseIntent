@@ -1,6 +1,6 @@
 # Drill-Down PRD - Purchase Intent System
 
-**Last Updated:** 2025-10-25
+**Last Updated:** 2025-10-31
 **Status:** Active
 **Maintainer:** Claude Code (update this file when workflow changes)
 
@@ -9,6 +9,72 @@
 ## Purpose
 
 This document defines the **drill-down workflow** for the Purchase Intent system - how we go from a broad topic (e.g., "meditation") to ultra-specific niches (e.g., "walking meditation for anxiety relief") backed by real demand data.
+
+---
+
+## 🆕 Tiered API Strategy (2025-10-31)
+
+**Problem Solved:** Google denied YouTube quota increase (10,000 units/day limit), and Google Trends has unpredictable rate limits.
+
+**Solution:** Use cheap/unlimited sources for exploration, expensive sources only for final validation.
+
+### **Three Modes:**
+
+#### **1. Drill-Down Mode (Reddit-Only)**
+```bash
+python agents/agent_0/main.py --drill-down-mode "meditation"
+```
+- **Sources:** Reddit + AI Agent Research (Task tool)
+- **Quota Cost:** ZERO (Reddit: 3,600 calls/hour, Agent: unlimited)
+- **Confidence:** 60% (acceptable for exploration)
+- **Use Case:** Explore 20-100 candidate topics, drill 3-5 levels deep
+- **Speed:** Fast (no rate limit delays)
+
+#### **2. Regular Mode (Reddit + Google Trends)**
+```bash
+python agents/agent_0/main.py "meditation"
+```
+- **Sources:** Reddit + Google Trends (24-hour cache)
+- **Quota Cost:** Low (~15 Trends calls/hour safe limit with caching)
+- **Confidence:** 100% (if both sources have data)
+- **Use Case:** Standard analysis with trend signals
+- **Speed:** Moderate (12s delay per Trends query)
+
+#### **3. Validation Mode (All Sources)**
+```bash
+python agents/agent_0/main.py --enable-youtube "walking meditation for anxiety"
+```
+- **Sources:** Reddit + Google Trends + YouTube
+- **Quota Cost:** High (~500-1,000 YouTube units per topic)
+- **Confidence:** 100% (if all 3 sources have data)
+- **Use Case:** Final validation before committing to write book
+- **Quota Budget:** 10,000 units/day = 10-20 topics max
+
+### **Recommended Workflow:**
+
+```
+Stage 1 (Exploration): Use --drill-down-mode
+├─ Level 0: meditation (1 query)
+├─ Level 1: 10 subtopics (10 queries)
+├─ Level 2: 5 promising → 50 queries
+└─ Total: 61 Reddit queries (~2% of hourly quota)
+
+Stage 2 (Selection): Pick top 3 ultra-niches from Level 2
+
+Stage 3 (Validation): Use --enable-youtube on final 3
+├─ "walking meditation for anxiety" (1,000 units)
+├─ "body scan meditation for sleep" (1,000 units)
+├─ "loving kindness meditation" (1,000 units)
+└─ Total: 3,000 units (~30% of daily YouTube quota)
+
+Stage 4 (Decision): Choose 1 topic to write about
+```
+
+**Key Benefits:**
+- Unlimited exploration (Reddit + Agent Research)
+- YouTube quota lasts entire month (not just 1 day)
+- Clear confidence scores guide when to validate
+- Fail loudly with actionable error messages
 
 ---
 
@@ -63,15 +129,27 @@ Level 2: walking meditation for anxiety (Rule of One niche - specific, validated
 
 **Step 4: Python Processing**
 
-### **User Says:**
-"Run Python with these topics under parent meditation"
+### **User Says (Exploration):**
+"Run Python with drill-down mode for these topics under parent meditation"
 
 ### **Claude Does:**
-- Runs: `python agents/agent_0/main.py <10 subtopics> --parent meditation`
+- Runs: `python agents/agent_0/main.py <10 subtopics> --parent meditation --drill-down-mode`
 - Python loads cached agent results (descriptions + demand scores)
 - Python adds Reddit data (community engagement, top subreddits)
-- Python adds YouTube data (view counts, top channels)
-- Python generates dashboard with 3-source validation (Agent + Reddit + YouTube)
+- **Skips:** Google Trends and YouTube (saves quotas)
+- Python generates dashboard with Reddit-only validation (60% confidence)
+- Claude opens dashboard in browser
+
+### **User Says (Final Validation):**
+"Run Python with YouTube enabled for my top 3 topics"
+
+### **Claude Does:**
+- Runs: `python agents/agent_0/main.py "topic1" "topic2" "topic3" --enable-youtube`
+- Python loads all cached data
+- Python adds Reddit data
+- Python adds Google Trends data
+- Python adds YouTube data (quota cost: ~3,000 units)
+- Python generates dashboard with full 3-source validation (100% confidence)
 - Claude opens dashboard in browser
 
 **Step 5: User Reviews**

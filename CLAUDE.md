@@ -56,10 +56,62 @@
 
 **LED Breadcrumb Ranges:**
 - 500-599: Agent 0 (Topic Research)
+  - 510-519: Google Trends operations
+  - 520-529: Reddit operations + Purchase Intent (525-529)
+  - 530-539: YouTube operations (optional, validation only)
+  - 540-549: Scoring and competition analysis
 - 1500-1599: Agent 1 (Product Research)
 - 2500-2599: Agent 2 (Demographics)
 - 3500-3599: Agent 3 (Persona Generator)
 - 4500-4599: Agent 4 (Intent Simulator)
+
+---
+
+## Tiered API Strategy (NEW - 2025-10-31)
+
+**Problem:** YouTube quota limited (10,000 units/day), Google Trends rate limited
+
+**Solution:** Use unlimited sources for exploration, expensive sources for final validation
+
+### Three Operating Modes:
+
+**1. Drill-Down Mode (Exploration)**
+```bash
+python agents/agent_0/main.py --drill-down-mode "topic"
+```
+- Sources: Reddit + AI Agent Research only
+- Quota: ZERO cost (unlimited exploration)
+- Confidence: 60% (acceptable for finding candidates)
+- Use: Drill 3-5 levels deep, analyze 20-100 topics
+
+**2. Regular Mode (Standard)**
+```bash
+python agents/agent_0/main.py "topic"
+```
+- Sources: Reddit + Google Trends
+- Quota: Low (15 calls/hour with 24hr cache)
+- Confidence: 100% if both sources have data
+- Use: Standard analysis with trend signals
+
+**3. Validation Mode (Final Decision)**
+```bash
+python agents/agent_0/main.py --enable-youtube "specific niche topic"
+```
+- Sources: Reddit + Google Trends + YouTube
+- Quota: HIGH (~1,000 YouTube units per topic)
+- Confidence: 100% if all 3 sources have data
+- Use: Validate final 1-3 topics before writing book
+
+### Quota Budgets:
+- Reddit: 3,600 calls/hour (effectively unlimited)
+- Google Trends: ~15 calls/hour safe (with caching)
+- YouTube: 10,000 units/day = 10-20 topics max
+
+### Recommended Workflow:
+1. Explore with --drill-down-mode (unlimited, fast)
+2. Select top 3 ultra-niches
+3. Validate with --enable-youtube (uses 30% daily quota)
+4. Choose 1 topic to write about
 
 ---
 

@@ -451,6 +451,7 @@ User: [Finds ultra-specific niche: "walking meditation for anxiety relief"]
 ### **Maintenance Log:**
 
 - **2025-10-25:** Initial creation after deleting drill_down.py. Documented Task tool workflow, deleted paid API approach, clarified Claude does research in chat (not Python).
+- **2025-10-31:** Added tiered API strategy (drill-down/regular/validation modes). Updated quota budgets (Reddit unlimited, Trends ~15/hour, YouTube 10K/day). Fixed None-handling bugs for drill-down mode. Added quota visualization to dashboard. Created rate-limit-analysis.md for system-wide capacity planning. Updated PRD to v3.0.
 
 ---
 
@@ -497,11 +498,20 @@ You know drill-down is working correctly when:
 
 ## Related Documentation
 
-- **CLAUDE.md** - Project-level rules (NO PAID APIs, FAIL LOUDLY, etc.)
+**Core PRDs (Read These First):**
+- **Docs/PRD-Purchase-Intent-System-v3.md** - Main system PRD (all 5 agents, current status)
+- **Docs/rate-limit-analysis.md** - System-wide quota budgets and capacity analysis
+- **Docs/5-agents-design.md** - Deep technical specifications for all agents
+
+**Project Context:**
+- **CLAUDE.md** - Project rules (NO PAID APIs, FAIL LOUDLY, tiered strategy, LED ranges)
 - **PROJECT_INDEX.md** - High-level project overview
-- **Context/[date]/HANDOFF-[date].md** - Daily session summaries
-- **Docs/Agent-Research-Workflow.md** - Cross-session agent workflow
+- **Context/[date]/HANDOFF-[date].md** - Session summaries with key decisions
+
+**Workflow Documentation:**
+- **Docs/Agent-Research-Workflow.md** - Cross-session agent workflow, caching
 - **Docs/Grok-drilldown.md** - Exact Grok prompt for subtopic generation
+- **Docs/Topic-Description-Workflow.md** - User-facing description workflow
 
 ---
 

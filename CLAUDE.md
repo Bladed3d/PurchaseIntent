@@ -43,12 +43,38 @@
 
 ---
 
+## 📚 Documentation Guide (New Claude Chats Start Here)
+
+**If you're a new Claude session, read these in order:**
+
+1. **Docs/PRD-Purchase-Intent-System-v3.md** (LATEST) - Complete system overview
+   - All 5 agents explained
+   - Agent 0 complete status + tiered strategy
+   - Agents 1-4 specifications + next steps
+
+2. **Docs/drill-down-prd.md** - Agent 0 workflow (IMPLEMENTED)
+   - Tiered API strategy (drill-down/regular/validation modes)
+   - Complete user-facing workflow with examples
+
+3. **Docs/rate-limit-analysis.md** - Quota budgets for all agents
+   - Agent 0: YouTube bottleneck (solved with tiered strategy)
+   - Agents 1-4: Mostly ZERO quota cost (Task tool + web scraping)
+
+4. **This file** (CLAUDE.md) - Project rules and context
+
+**Quick Status:**
+- ✅ Agent 0 (Topic Research): Complete with quota visualization
+- ⏳ Agents 1-4: Not started, ready to build
+
+---
+
 ## Project Context
 
 **Mission:** AI-powered purchase intent detection system
 **Stack:** Python (data research), React/TypeScript (future UI)
 **GitHub:** https://github.com/Bladed3d/PurchaseIntent.git
 **Branch:** main
+**Current PRD:** Docs/PRD-Purchase-Intent-System-v3.md (2025-10-31)
 
 **Agents Available:**
 - `lead-programmer`: Feature implementation with LED instrumentation
@@ -112,6 +138,12 @@ python agents/agent_0/main.py --enable-youtube "specific niche topic"
 2. Select top 3 ultra-niches
 3. Validate with --enable-youtube (uses 30% daily quota)
 4. Choose 1 topic to write about
+
+### Complete Quota Analysis:
+See **Docs/rate-limit-analysis.md** for:
+- System-wide capacity planning (all 5 agents)
+- Daily usage patterns and bottlenecks
+- Agent 1-4 quota impact (spoiler: mostly ZERO - Task tool FTW!)
 
 ---
 

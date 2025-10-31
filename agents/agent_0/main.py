@@ -23,7 +23,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../.
 
 from lib.breadcrumb_system import BreadcrumbTrail
 from agents.agent_0.config import Agent0Config as Config
-from agents.agent_0.api_clients import GoogleTrendsClient, RedditClient
+from agents.agent_0.api_clients import GoogleTrendsClient, RedditClient, YouTubeClient
 from agents.agent_0.api_clients_playwright import GoogleTrendsPlaywrightClient
 from agents.agent_0.api_clients_websearch import GoogleTrendsWebSearchClient
 from agents.agent_0.agent_results_loader import AgentResultsLoader
@@ -125,6 +125,20 @@ def main(topics: List[str], method: str = "pytrends", parent_topic: str = None, 
     scorer = TopicScorer(trail)
     dashboard_gen = DashboardGenerator(trail)
 
+    # Initialize YouTube client if enabled
+    youtube_client = None
+    if Config.ENABLE_YOUTUBE:
+        try:
+            youtube_client = YouTubeClient(trail)
+            trail.light(Config.LED_INIT + 2, {
+                "action": "youtube_client_initialized"
+            })
+        except Exception as e:
+            trail.fail(Config.LED_INIT + 2, e)
+            print(f"\n[!] WARNING: YouTube client initialization failed: {e}")
+            print("    Continuing with Reddit + Google Trends only\n")
+            Config.ENABLE_YOUTUBE = False
+
     # Check for AI agent results first, then batch query Google Trends
     print(f"\n{'='*60}")
     print(f"Checking for AI agent research results...")
@@ -168,33 +182,49 @@ def main(topics: List[str], method: str = "pytrends", parent_topic: str = None, 
             "index": idx
         })
 
-        # Get trend data (agent results preferred, Google Trends fallback)
-        if topic in agent_results:
-            print(f"  [1/3] Using AI agent research data (demand: {agent_results[topic]['demand_score']}, confidence: {agent_results[topic]['confidence']}%)...")
-            # Convert agent results to trends format
-            trends_data = {
-                "average_interest": agent_results[topic]['demand_score'],
-                "peak_interest": agent_results[topic]['demand_score'],
-                "trend_direction": "stable",
-                "data_points": agent_results[topic]['signals']['mention_count'],
-                "source": "agent"
-            }
+        # Get trend data (skip if DRILLDOWN_MODE)
+        step = 1
+        total_steps = 2 + (1 if Config.ENABLE_YOUTUBE else 0) + (0 if Config.DRILLDOWN_MODE else 1)
+
+        trends_data = None
+        if not Config.DRILLDOWN_MODE:
+            if topic in agent_results:
+                print(f"  [{step}/{total_steps}] Using AI agent research data (demand: {agent_results[topic]['demand_score']}, confidence: {agent_results[topic]['confidence']}%)...")
+                # Convert agent results to trends format
+                trends_data = {
+                    "average_interest": agent_results[topic]['demand_score'],
+                    "peak_interest": agent_results[topic]['demand_score'],
+                    "trend_direction": "stable",
+                    "data_points": agent_results[topic]['signals']['mention_count'],
+                    "source": "agent"
+                }
+            else:
+                print(f"  [{step}/{total_steps}] Using batched Google Trends data...")
+                trends_data = trends_batch_results.get(topic, {
+                    "average_interest": 0,
+                    "peak_interest": 0,
+                    "trend_direction": "no_data",
+                    "data_points": 0,
+                    "source": "google_trends"
+                })
+            step += 1
         else:
-            print("  [1/3] Using batched Google Trends data...")
-            trends_data = trends_batch_results.get(topic, {
-                "average_interest": 0,
-                "peak_interest": 0,
-                "trend_direction": "no_data",
-                "data_points": 0,
-                "source": "google_trends"
-            })
+            print(f"  [DRILL-DOWN MODE] Skipping Google Trends (saves quota)")
 
         # Query Reddit (with purchase intent data)
-        print("  [2/3] Querying Reddit...")
+        print(f"  [{step}/{total_steps}] Querying Reddit...")
         reddit_data = reddit_client.search_topic(topic, fetch_purchase_intent=True)
+        step += 1
+
+        # Query YouTube if enabled
+        youtube_data = None
+        if Config.ENABLE_YOUTUBE and youtube_client:
+            print(f"  [{step}/{total_steps}] Querying YouTube...")
+            youtube_data = youtube_client.search_videos(topic, fetch_purchase_intent=False)
+            step += 1
 
         # Analyze purchase intent from Reddit posts
-        print("  [3/3] Analyzing purchase intent...")
+        print(f"  [{step}/{total_steps}] Analyzing purchase intent...")
         purchase_intent_data = {}
         if reddit_data.get('posts'):
             purchase_intent_data = purchase_intent_analyzer.analyze_purchase_intent(
@@ -215,7 +245,8 @@ def main(topics: List[str], method: str = "pytrends", parent_topic: str = None, 
         print("  [*] Calculating composite score...")
         scores = scorer.calculate_composite_score(
             trends_data,
-            reddit_data
+            reddit_data,
+            youtube_data  # Pass YouTube data (None if not enabled)
         )
 
         # Store results (include description if available from agent results)
@@ -224,6 +255,7 @@ def main(topics: List[str], method: str = "pytrends", parent_topic: str = None, 
             "scores": scores,
             "trends_data": trends_data,
             "reddit_data": reddit_data,
+            "youtube_data": youtube_data,  # Include YouTube data
             "purchase_intent": purchase_intent_data  # NEW: purchase intent analysis
         }
 
@@ -325,11 +357,21 @@ if __name__ == "__main__":
         print("  pytrends   - Standard Google Trends API (default, rate limited)")
         print("  playwright - Browser automation (needs proxies, rate limited)")
         print("  websearch  - Web search trend signals (unlimited, no rate limits)")
+        print("\nMode Flags:")
+        print("  --drill-down-mode  - Reddit-only (fast exploration, 60% confidence, saves quotas)")
+        print("  --enable-youtube   - Enable YouTube API (final validation, 100% confidence, uses quota)")
         print("\nExamples:")
+        print('  # Drill-down exploration (Reddit-only, unlimited)')
+        print('  python agents/agent_0/main.py --drill-down-mode "romance novels"')
+        print('')
+        print('  # Final validation (all sources including YouTube)')
+        print('  python agents/agent_0/main.py --enable-youtube "walking meditation for anxiety"')
+        print('')
+        print('  # Regular mode (Reddit + Google Trends)')
         print('  python agents/agent_0/main.py "romance novels" "productivity apps"')
+        print('')
+        print('  # Drill-down with subtopics')
         print('  python agents/agent_0/main.py --drill-down "romance novels"')
-        print('  python agents/agent_0/main.py --method websearch "romance novels"')
-        print('  python agents/agent_0/main.py --method playwright "romance novels"')
         sys.exit(1)
 
     # Check for method flag
@@ -346,6 +388,34 @@ if __name__ == "__main__":
         # Remove method args from sys.argv for further processing
         sys.argv.pop(idx)  # Remove --method
         sys.argv.pop(idx)  # Remove method value
+
+    # Check for drill-down mode flag (Reddit-only, fast exploration)
+    if "--drill-down-mode" in sys.argv:
+        Config.DRILLDOWN_MODE = True
+        sys.argv.remove("--drill-down-mode")
+        print("[*] DRILL-DOWN MODE: Using Reddit-only for fast exploration")
+        print("    - Google Trends: DISABLED (saves quota)")
+        print("    - YouTube: DISABLED (saves quota)")
+        print("    - Confidence: 60% (acceptable for exploration)")
+        print("    - Use regular mode (without flag) for final validation\n")
+
+    # Check for YouTube enable flag (for final validation)
+    if "--enable-youtube" in sys.argv:
+        Config.ENABLE_YOUTUBE = True
+        sys.argv.remove("--enable-youtube")
+        print("[*] YOUTUBE ENABLED: Using full 3-source validation")
+        print("    - YouTube API: ENABLED (uses quota: ~500-1,000 units per topic)")
+        print("    - Free tier: 10,000 units/day (can handle 10-20 topics)")
+        print("    - Confidence: 100% (all sources)")
+        print("    - Recommended: Use for final 1-3 topic validation only\n")
+
+    # Validate YouTube configuration if enabled
+    if Config.ENABLE_YOUTUBE:
+        if not Config.YOUTUBE_API_KEY:
+            print("[!] ERROR: --enable-youtube requires YOUTUBE_API_KEY in .env file")
+            print("    Add: YOUTUBE_API_KEY=your_key_here")
+            print("    Get key from: https://console.cloud.google.com/")
+            sys.exit(1)
 
     # Check for drill-down mode
     parent_topic = None

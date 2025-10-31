@@ -245,18 +245,74 @@ class TopicScorer:
         total = volume_score + engagement_score + diversity_bonus
         return min(total, 100.0)
 
+    def normalize_youtube_score(self, youtube_data: Dict) -> float:
+        """
+        Normalize YouTube data to 0-100 score
+
+        Considers:
+        - Number of videos (more content = more interest)
+        - View counts (high views = strong demand signals)
+        - Channel diversity (spread across creators)
+        """
+        if not youtube_data:
+            return 0.0
+
+        total_videos = youtube_data.get('total_videos', 0)
+        avg_views = youtube_data.get('avg_views', 0)
+        top_channels = youtube_data.get('top_channels', [])
+
+        if total_videos == 0:
+            return 0.0
+
+        # Video volume score (logarithmic scale)
+        # 5 videos = 20, 10 videos = 35, 20+ videos = 60
+        if total_videos >= 20:
+            volume_score = 60
+        elif total_videos >= 10:
+            volume_score = 35
+        elif total_videos >= 5:
+            volume_score = 20
+        else:
+            volume_score = total_videos * 4
+
+        # View count score (logarithmic scale, capped)
+        # 10k avg views = 20, 100k = 40, 1M+ = 60
+        if avg_views >= 1000000:
+            views_score = 60
+        elif avg_views >= 100000:
+            views_score = 40
+        elif avg_views >= 10000:
+            views_score = 20
+        elif avg_views > 0:
+            views_score = min((avg_views / 1000) * 2, 20)
+        else:
+            views_score = 0
+
+        # Channel diversity bonus (more creators = broader interest)
+        diversity_bonus = min(len(top_channels) * 4, 20)
+
+        total = volume_score + views_score + diversity_bonus
+        return min(total, 100.0)
+
     def calculate_composite_score(
         self,
         trends_data: Dict,
-        reddit_data: Dict
+        reddit_data: Dict,
+        youtube_data: Dict = None
     ) -> Dict:
         """
         Calculate weighted composite demand score with competition analysis
+
+        Supports 3 modes:
+        - DRILLDOWN_MODE: Reddit-only (60% confidence, fast exploration)
+        - 2-source: Reddit + Google Trends (100% confidence if both have data)
+        - 3-source: Reddit + Google Trends + YouTube (100% confidence if all have data)
 
         Returns dict with:
         - composite_score: 0-100 overall demand score
         - trends_score: normalized Google Trends score
         - reddit_score: normalized Reddit score
+        - youtube_score: normalized YouTube score (if enabled)
         - confidence: 0-100 confidence in score accuracy
         - competition: dict with competition metrics
         - opportunity: dict with opportunity score and recommendation
@@ -267,23 +323,48 @@ class TopicScorer:
         })
 
         # Normalize each source (DEMAND scoring)
-        trends_score = self.normalize_trends_score(trends_data)
+        trends_score = self.normalize_trends_score(trends_data) if trends_data else 0
         reddit_score = self.normalize_reddit_score(reddit_data)
+        youtube_score = self.normalize_youtube_score(youtube_data) if youtube_data else 0
 
-        # Weighted composite DEMAND score (50/50 split)
-        composite = (
-            trends_score * Config.WEIGHT_GOOGLE_TRENDS +
-            reddit_score * Config.WEIGHT_REDDIT
-        )
-
-        # Calculate confidence based on data availability
+        # Count sources with data
         sources_with_data = sum([
-            1 if trends_data.get('data_points', 0) > 0 else 0,
-            1 if reddit_data.get('total_posts', 0) > 0 else 0
+            1 if trends_data and trends_data.get('data_points', 0) > 0 else 0,
+            1 if reddit_data.get('total_posts', 0) > 0 else 0,
+            1 if youtube_data and youtube_data.get('total_videos', 0) > 0 else 0
         ])
 
-        # Confidence: 2 sources = 100%, 1 source = 60%, 0 sources = 0%
-        confidence = {2: 100, 1: 60, 0: 0}[sources_with_data]
+        # Adjust weights dynamically based on available sources
+        if Config.ENABLE_YOUTUBE and youtube_data:
+            # 3-source mode: 33/33/33 split
+            weight_trends = 0.33
+            weight_reddit = 0.33
+            weight_youtube = 0.34  # Slight extra to sum to 1.0
+            composite = (
+                trends_score * weight_trends +
+                reddit_score * weight_reddit +
+                youtube_score * weight_youtube
+            )
+        elif Config.DRILLDOWN_MODE or not trends_data:
+            # Drill-down mode: Reddit-only
+            composite = reddit_score
+        else:
+            # 2-source mode: 50/50 split (Trends + Reddit)
+            composite = (
+                trends_score * Config.WEIGHT_GOOGLE_TRENDS +
+                reddit_score * Config.WEIGHT_REDDIT
+            )
+
+        # Calculate confidence based on mode and data availability
+        if Config.DRILLDOWN_MODE:
+            # Drill-down mode: 60% confidence (acceptable for exploration)
+            confidence = 60 if sources_with_data > 0 else 0
+        elif Config.ENABLE_YOUTUBE:
+            # 3-source mode: Confidence based on source count
+            confidence = {3: 100, 2: 75, 1: 50, 0: 0}[sources_with_data]
+        else:
+            # 2-source mode: Confidence based on source count
+            confidence = {2: 100, 1: 60, 0: 0}[sources_with_data]
 
         # Analyze COMPETITION
         competition = self.competition_analyzer.calculate_overall_competition(
@@ -330,6 +411,7 @@ class TopicScorer:
             "composite_score": round(composite, 2),
             "trends_score": round(trends_score, 2),
             "reddit_score": round(reddit_score, 2),
+            "youtube_score": round(youtube_score, 2) if youtube_data else None,
             "confidence": confidence,
             "sources_with_data": sources_with_data,
 

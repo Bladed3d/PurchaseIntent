@@ -38,6 +38,12 @@ secrets/
 credentials.json
 api_keys.json
 
+# SECURITY: NEVER commit logs - they may contain API keys in breadcrumbs/error messages
+logs/
+logs/*.jsonl
+logs/*.log
+*.jsonl
+
 # IDE
 .vscode/
 .idea/

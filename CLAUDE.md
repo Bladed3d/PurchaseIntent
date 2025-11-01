@@ -1,12 +1,13 @@
 # Purchase-Intent Development Instructions
 
-## 🚨 TOP 5 CRITICAL RULES
+## 🚨 TOP 6 CRITICAL RULES
 
-1. **FAIL LOUDLY** - Never create fallback code. Raise exceptions immediately. The user is the fallback.
-2. **NO PAID APIs** - User has Claude Pro subscription. Use Task tool, not Anthropic API. No additional costs.
-3. **ASK BEFORE AUTOMATING** - Never create slash commands, agents, or workflows without explicit user approval.
-4. **START SIMPLE** - Edit existing files before creating new ones. Minimal solution first, add complexity only when needed.
-5. **COMMIT OFTEN** - Git protects work. Commit before experiments, risky changes, or major edits.
+1. **NEVER COMMIT SECRETS** - API keys, tokens, passwords MUST NEVER touch git. Breadcrumb system auto-sanitizes, but NEVER log secrets intentionally.
+2. **FAIL LOUDLY** - Never create fallback code. Raise exceptions immediately. The user is the fallback.
+3. **NO PAID APIs** - User has Claude Pro subscription. Use Task tool, not Anthropic API. No additional costs.
+4. **ASK BEFORE AUTOMATING** - Never create slash commands, agents, or workflows without explicit user approval.
+5. **START SIMPLE** - Edit existing files before creating new ones. Minimal solution first, add complexity only when needed.
+6. **COMMIT OFTEN** - Git protects work. Commit before experiments, risky changes, or major edits.
 
 ---
 
@@ -15,13 +16,15 @@
 ```json
 {
   "forbidden": {
+    "commit_secrets": "NEVER commit API keys, tokens, passwords. NEVER log them in breadcrumbs. NEVER include them in error messages. .env ONLY.",
     "fallback_code": "No try/except that masks errors. No .get(key, default) that hides missing data. Fail loudly.",
     "paid_apis": "No Anthropic API, OpenAI API, or any paid service. Use Task tool for agents.",
     "silent_automation": "No unprompted slash commands, agents, or workflow changes. Always ask first.",
     "over_engineering": "No new files without justification. No complex architectures for simple tasks.",
     "fake_data": "No hard-coded mock data in application code. Test data goes in separate fixtures.",
     "default_values": "No .get(key, 0) or similar that makes missing data look real. Require the data.",
-    "process_kills": "Never taskkill by process name (node.exe, electron.exe). Use specific PIDs only."
+    "process_kills": "Never taskkill by process name (node.exe, electron.exe). Use specific PIDs only.",
+    "log_secrets": "NEVER trail.light() with api_key, token, secret fields. NEVER print API responses with credentials."
   },
   "required": {
     "fail_loudly": "Raise ValueError/KeyError immediately when data is missing or APIs fail.",
@@ -144,6 +147,59 @@ See **Docs/rate-limit-analysis.md** for:
 - System-wide capacity planning (all 5 agents)
 - Daily usage patterns and bottlenecks
 - Agent 1-4 quota impact (spoiler: mostly ZERO - Task tool FTW!)
+
+---
+
+## 🔒 SECURITY: API Key Protection
+
+**CRITICAL: Previous Claude session exposed Google API key to GitHub by logging it in breadcrumbs.jsonl**
+
+### Protections Implemented:
+
+1. **Automatic Sanitization** (`lib/breadcrumb_system.py`)
+   - Auto-redacts API keys before writing to logs
+   - Detects patterns: AIza..., sk-..., Bearer tokens, etc.
+   - Redacts keys by name: api_key, token, secret, password, etc.
+
+2. **.gitignore Protection**
+   - `logs/` directory NEVER committed
+   - `*.jsonl` files blocked
+   - `.env` and credentials blocked
+
+3. **Pre-Commit Hook** (`.git/hooks/pre-commit`)
+   - Scans every commit for secret patterns
+   - Blocks commit if API keys detected
+   - Must pass security check before push
+
+4. **Developer Responsibility**
+   - NEVER `trail.light(id, {"api_key": key})` - sanitizer will redact it anyway
+   - NEVER print API responses that might contain credentials
+   - NEVER log full error messages from API clients (may contain tokens in URLs)
+   - ALWAYS use `os.getenv('API_KEY')` - never hardcode
+
+### If You Accidentally Commit a Secret:
+
+1. **Revoke the key IMMEDIATELY** at the API provider's console
+2. **Generate new key** and update `.env`
+3. **Remove from git history:**
+   ```bash
+   # Find the commit
+   git log --all -p | grep "YOUR_SECRET"
+
+   # Remove file from history
+   git filter-branch --force --index-filter \
+     "git rm --cached --ignore-unmatch FILE_WITH_SECRET" \
+     --prune-empty --tag-name-filter cat -- --all
+
+   # Force push to overwrite GitHub
+   git push origin --force --all
+   ```
+
+### Why This Matters:
+
+**Claude Code/Anthropic provides ZERO secret protection.** They will blindly commit your API keys if you're not careful. The protections above were implemented BY THIS PROJECT, not by Anthropic.
+
+**DO NOT TRUST Claude/Anthropic to protect your secrets. They won't.**
 
 ---
 

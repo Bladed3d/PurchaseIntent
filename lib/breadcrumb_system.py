@@ -4,11 +4,14 @@ Python implementation for autonomous debugging and monitoring
 
 Based on VoiceCoach V2 breadcrumb-system.ts pattern
 Optimized for CLI Python agents with JSON Lines logging
+
+SECURITY: Auto-sanitizes API keys, tokens, and secrets before logging
 """
 
 import json
 import time
 import traceback
+import re
 from dataclasses import dataclass, asdict
 from typing import Any, Dict, List, Optional, Callable
 from pathlib import Path
@@ -34,6 +37,27 @@ class VerificationResult:
     expect: Any
     actual: Any
     validator: Optional[Callable[[Any], bool]] = None
+
+
+# SECURITY: Patterns that indicate sensitive data
+SENSITIVE_KEY_PATTERNS = [
+    'api_key', 'apikey', 'api-key', 'key',
+    'secret', 'password', 'token', 'auth',
+    'credential', 'authorization', 'bearer',
+    'client_secret', 'client_id', 'access_token',
+    'refresh_token', 'session', 'cookie'
+]
+
+# SECURITY: Regex patterns for detecting API keys in strings
+SECRET_VALUE_PATTERNS = [
+    r'AIza[0-9A-Za-z_-]{35}',  # Google API keys
+    r'sk-[0-9A-Za-z]{48}',  # OpenAI API keys
+    r'Bearer\s+[A-Za-z0-9\-_]+\.[A-Za-z0-9\-_]+\.[A-Za-z0-9\-_]+',  # JWT tokens
+    r'[A-Za-z0-9]{40}',  # Generic 40-char tokens (GitHub, AWS)
+    r'xox[baprs]-[0-9A-Za-z\-]+',  # Slack tokens
+    r'ghp_[0-9A-Za-z]{36}',  # GitHub personal access tokens
+    r'AKIA[0-9A-Z]{16}',  # AWS access keys
+]
 
 
 class BreadcrumbTrail:
@@ -281,12 +305,98 @@ class BreadcrumbTrail:
         else:
             return f"LED_{led_id}"
 
+    def _sanitize_value(self, value: Any) -> Any:
+        """
+        Sanitize a single value (recursive for nested structures)
+
+        SECURITY: Redacts API keys, tokens, passwords, secrets
+        """
+        if value is None:
+            return value
+
+        if isinstance(value, dict):
+            return self._sanitize_data(value)
+
+        if isinstance(value, list):
+            return [self._sanitize_value(item) for item in value]
+
+        if isinstance(value, str):
+            # Check if value looks like a secret (matches known patterns)
+            for pattern in SECRET_VALUE_PATTERNS:
+                if re.search(pattern, value):
+                    return "***REDACTED_SECRET***"
+
+            # Redact very long strings that might be tokens (>50 chars with no spaces)
+            if len(value) > 50 and ' ' not in value:
+                return "***REDACTED_LONG_STRING***"
+
+        return value
+
+    def _sanitize_data(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Remove sensitive data before logging
+
+        SECURITY: Auto-detects and redacts:
+        - API keys (by key name: api_key, token, secret, etc.)
+        - Credential values (Google API keys AIza..., OpenAI sk-..., etc.)
+        - Long tokens and bearer strings
+        """
+        if not data:
+            return data
+
+        sanitized = {}
+        for key, value in data.items():
+            # Normalize key for comparison (lowercase, no separators)
+            key_normalized = key.lower().replace('_', '').replace('-', '').replace(' ', '')
+
+            # Check if key name indicates sensitive data
+            is_sensitive_key = any(pattern in key_normalized for pattern in SENSITIVE_KEY_PATTERNS)
+
+            if is_sensitive_key:
+                sanitized[key] = "***REDACTED_API_KEY***"
+            else:
+                sanitized[key] = self._sanitize_value(value)
+
+        return sanitized
+
+    def _sanitize_string(self, text: str) -> str:
+        """
+        Sanitize a string (for error messages, stack traces)
+
+        SECURITY: Redacts secrets that might appear in URLs, error messages, etc.
+        """
+        if not text:
+            return text
+
+        sanitized = text
+        for pattern in SECRET_VALUE_PATTERNS:
+            sanitized = re.sub(pattern, '***REDACTED_SECRET***', sanitized)
+
+        return sanitized
+
     def _write_log(self, breadcrumb: Breadcrumb) -> None:
-        """Write breadcrumb to JSON Lines log file"""
+        """
+        Write breadcrumb to JSON Lines log file
+
+        SECURITY: Automatically sanitizes sensitive data before writing
+        """
         if BreadcrumbTrail._log_file:
             try:
-                with open(BreadcrumbTrail._log_file, 'a') as f:
+                with open(BreadcrumbTrail._log_file, 'a', encoding='utf-8') as f:
                     log_entry = asdict(breadcrumb)
+
+                    # SECURITY: Sanitize data field
+                    if log_entry.get('data'):
+                        log_entry['data'] = self._sanitize_data(log_entry['data'])
+
+                    # SECURITY: Sanitize error messages (might contain URLs with tokens)
+                    if log_entry.get('error'):
+                        log_entry['error'] = self._sanitize_string(log_entry['error'])
+
+                    # SECURITY: Sanitize stack traces
+                    if log_entry.get('stack'):
+                        log_entry['stack'] = self._sanitize_string(log_entry['stack'])
+
                     log_entry['iso_timestamp'] = datetime.fromtimestamp(
                         breadcrumb.timestamp
                     ).isoformat()

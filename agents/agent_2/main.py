@@ -129,10 +129,10 @@ def main(input_path: str = None, test_data_path: str = None, auto_approve: bool 
             print(f"  [FAIL] {source_name} extraction failed: {e}")
             # Continue with other sources
 
-    # Verify we have at least 2 sources for triangulation
-    if len(source_demographics) < 2:
+    # Verify we have minimum required sources
+    if len(source_demographics) < Config.MIN_DATA_SOURCES:
         error = ValueError(
-            f"Need at least 2 data sources for triangulation, got {len(source_demographics)}. "
+            f"Need at least {Config.MIN_DATA_SOURCES} data source(s), got {len(source_demographics)}. "
             f"Available sources: {list(source_demographics.keys())}"
         )
         trail.fail(Config.LED_EXTRACTION_START + 1, error)

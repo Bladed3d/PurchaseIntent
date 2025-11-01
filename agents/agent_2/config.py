@@ -30,6 +30,7 @@ class Agent2Config:
     NUM_DEMOGRAPHIC_CLUSTERS = int(os.getenv('AGENT_2_NUM_CLUSTERS', '4'))
 
     # Confidence Thresholds
+    MIN_DATA_SOURCES = int(os.getenv('AGENT_2_MIN_DATA_SOURCES', '1'))  # Minimum sources (1=single source OK, 2=triangulation required)
     CONFIDENCE_THRESHOLD = float(os.getenv('AGENT_2_CONFIDENCE_THRESHOLD', '0.80'))
     MIN_SOURCE_AGREEMENT = float(os.getenv('AGENT_2_MIN_SOURCE_AGREEMENT', '0.70'))
     MIN_BENCHMARK_MATCH = float(os.getenv('AGENT_2_MIN_BENCHMARK_MATCH', '0.80'))

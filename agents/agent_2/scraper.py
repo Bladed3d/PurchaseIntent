@@ -1,11 +1,13 @@
 """
 Data Scraper - Load review/comment data from Agent 1 or direct sources
+Scrapes actual comment text from Reddit/YouTube URLs
 
 LED Range: 2510-2539
 """
 
 import json
 import os
+import praw
 from typing import Dict, Any, List
 from pathlib import Path
 
@@ -168,22 +170,66 @@ class DataScraper:
         return reviews
 
     def _extract_reddit_comments(self, agent1_data: Dict[str, Any]) -> List[Dict[str, Any]]:
-        """Extract Reddit comments from Agent 1 data"""
+        """
+        Scrape actual Reddit comments from URLs provided by Agent 1
+
+        Agent 1 provides discussion URLs and comment counts.
+        Agent 2 scrapes the actual comment text for demographic analysis.
+        """
         comments = []
 
-        # Agent 1 stores Reddit discussions in discussion_urls
+        # Get Reddit discussions from Agent 1
         discussions = agent1_data.get('discussion_urls', [])
+        reddit_discussions = [d for d in discussions if d.get('platform') == 'reddit']
 
-        for discussion in discussions:
-            discussion_comments = discussion.get('comments', [])
+        if not reddit_discussions:
+            return comments
 
-            for comment in discussion_comments[:self.config.MAX_REDDIT_COMMENTS_PER_THREAD]:
-                comments.append({
-                    "id": f"reddit_{len(comments)}",
-                    "text": comment.get('text', comment.get('body', '')),
-                    "source": "reddit",
-                    "thread": discussion.get('url', 'unknown')
+        # Initialize Reddit API client
+        try:
+            reddit = praw.Reddit(
+                client_id=os.getenv('REDDIT_CLIENT_ID'),
+                client_secret=os.getenv('REDDIT_CLIENT_SECRET'),
+                user_agent=os.getenv('REDDIT_USER_AGENT', 'Purchase-Intent-Research/1.0')
+            )
+        except Exception as e:
+            raise ValueError(f"Failed to initialize Reddit client: {str(e)}\nCheck REDDIT_CLIENT_ID and REDDIT_CLIENT_SECRET in .env")
+
+        # Scrape comments from each discussion
+        for discussion in reddit_discussions[:self.config.MAX_REDDIT_DISCUSSIONS]:
+            url = discussion.get('url', '')
+            if not url:
+                continue
+
+            try:
+                # Extract submission ID from URL
+                submission_id = url.split('/comments/')[1].split('/')[0] if '/comments/' in url else None
+                if not submission_id:
+                    continue
+
+                # Fetch submission
+                submission = reddit.submission(id=submission_id)
+                submission.comments.replace_more(limit=0)  # Don't fetch "load more" comments
+
+                # Get top comments
+                for comment in submission.comments.list()[:self.config.MAX_REDDIT_COMMENTS_PER_THREAD]:
+                    if hasattr(comment, 'body') and comment.body and len(comment.body) > 20:
+                        comments.append({
+                            "id": f"reddit_{len(comments)}",
+                            "text": comment.body,
+                            "source": "reddit",
+                            "thread": url,
+                            "score": comment.score if hasattr(comment, 'score') else 0
+                        })
+
+            except Exception as e:
+                # Skip this discussion if scraping fails (don't fail entire pipeline)
+                self.trail.light(self.config.LED_SCRAPE_START, {
+                    "warning": "reddit_scrape_failed",
+                    "url": url,
+                    "error": str(e)
                 })
+                continue
 
         return comments
 

@@ -20,25 +20,9 @@ This command combines session saving with decision extraction.
 
 ## Workflow
 
-**Step 1: Save the session (no Claude tokens used)**
+**Assumption:** User has already run `python save-session.py` before invoking this command.
 
-Run the Python script to save the full chat:
-
-```bash
-python save-session.py
-```
-
-This creates:
-- `Context/{date}/session-{timestamp}.md` - Full chat history
-- Updates `PROJECT_INDEX.md` - Current project structure
-
-**Step 2: Extract decisions (uses Claude tokens)**
-
-Now use the session-summarizer agent to extract what matters:
-
-```
-Use the session-summarizer agent to find and analyze the most recent session file in Context/
-(it may be from a previous date, not necessarily today).
+**Your task:** Use the session-summarizer agent to find and analyze the most recent session file in Context/ (it may be from a previous date, not necessarily today).
 
 Create a HANDOFF-{session-date}.md in the same directory as the session file with:
 - Decisions made
@@ -48,7 +32,6 @@ Create a HANDOFF-{session-date}.md in the same directory as the session file wit
 
 If a HANDOFF file already exists for that session's date, APPEND the new summary to it (don't overwrite).
 Use a separator like "--- Session [timestamp] ---" between entries.
-```
 
 ---
 
@@ -56,16 +39,12 @@ Use a separator like "--- Session [timestamp] ---" between entries.
 
 ```
 User: /context-summary
-Claude:
-[Reminds user to run save-session.py first]
-
-User: [Runs python save-session.py]
 
 Claude:
-[Automatically invokes session-summarizer agent]
+[Immediately invokes session-summarizer agent]
 [Finds and reads most recent session file (may be from previous date)]
 [Creates or appends to HANDOFF file in same directory as session]
-[Reports: "Session saved + summary appended to Context/2025-10-22/HANDOFF-2025-10-22.md"]
+[Reports: "Summary appended to Context/2025-10-22/HANDOFF-2025-10-22.md"]
 ```
 
 ---
@@ -89,8 +68,8 @@ Claude:
 
 ## Important Notes
 
-1. **Run save-session.py FIRST** - This is local Python, no tokens used
-2. **Then let Claude extract decisions** - This uses tokens but creates actionable summary
+1. **User runs save-session.py before invoking this command** - Local Python saves full session (zero tokens)
+2. **Claude immediately extracts decisions** - Uses session-summarizer agent (costs tokens but adds value)
 3. **Multiple sessions per day** - HANDOFF file gets appended, not overwritten
 4. **Start next session** - Read HANDOFF file to continue with full context
 

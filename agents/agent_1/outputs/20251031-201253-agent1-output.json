@@ -1,0 +1,411 @@
+{
+  "agent": "product_researcher",
+  "version": "1.0",
+  "status": "complete",
+  "timestamp": "2025-10-31T20:12:53.962925",
+  "product_input": {
+    "description": "meditation books",
+    "category": "book"
+  },
+  "comparables": [
+    {
+      "id": "222666",
+      "title": "The Art of Meditation",
+      "url": "https://www.goodreads.com/book/show/222666.The_Art_of_Meditation?from_search=true&from_srp=true&qid=raffuuyerx&rank=8",
+      "platform": "goodreads",
+      "author": "Joel S. Goldsmith",
+      "rating": 4.47,
+      "review_count": 263,
+      "want_to_read": null,
+      "scraped_at": "2025-10-31T20:05:54.477227",
+      "relevance_score": 0.381
+    },
+    {
+      "id": "377487",
+      "title": "Undoing Yourself with Energized Meditation and Other Devices",
+      "url": "https://www.goodreads.com/book/show/377487.Undoing_Yourself_with_Energized_Meditation_and_Other_Devices?from_search=true&from_srp=true&qid=raffuuyerx&rank=2",
+      "platform": "goodreads",
+      "author": "Christopher S. Hyatt",
+      "rating": 3.92,
+      "review_count": 854,
+      "want_to_read": null,
+      "scraped_at": "2025-10-31T20:05:54.389685",
+      "relevance_score": 0.356
+    },
+    {
+      "id": "370997",
+      "title": "Meditation: A Simple Eight-Point Program for Translating Spiritual Ideala Simple Eight-Point Program for Translating Spiritual Ideals Into Daily Life S Into Daily Life",
+      "url": "https://www.goodreads.com/book/show/370997.Meditation?from_search=true&from_srp=true&qid=raffuuyerx&rank=1",
+      "platform": "goodreads",
+      "author": "Eknath Easwaran",
+      "rating": 4.34,
+      "review_count": 1214,
+      "want_to_read": null,
+      "scraped_at": "2025-10-31T20:05:54.373087",
+      "relevance_score": 0.331
+    },
+    {
+      "id": "309521",
+      "title": "Descartes' Meditation on First Philosophy",
+      "url": "https://www.goodreads.com/book/show/309521.Descartes_Meditation_on_First_Philosophy?from_search=true&from_srp=true&qid=raffuuyerx&rank=6",
+      "platform": "goodreads",
+      "author": "David Mills Daniel",
+      "rating": 3.33,
+      "review_count": 54,
+      "want_to_read": null,
+      "scraped_at": "2025-10-31T20:05:54.449754",
+      "relevance_score": 0.31
+    },
+    {
+      "id": "354721",
+      "title": "The Fourfold Path to Healing: Working with the Laws of Nutrition, Therapeutics, Movement and Meditation in the Art of Medicine",
+      "url": "https://www.goodreads.com/book/show/354721.The_Fourfold_Path_to_Healing?from_search=true&from_srp=true&qid=raffuuyerx&rank=3",
+      "platform": "goodreads",
+      "author": "Thomas S. Cowan",
+      "rating": 4.05,
+      "review_count": 371,
+      "want_to_read": null,
+      "scraped_at": "2025-10-31T20:05:54.403906",
+      "relevance_score": 0.29
+    },
+    {
+      "id": "44442867",
+      "title": "Meister Eckhart's Book of Secrets: Meditations on Letting Go and Finding True Freedom",
+      "url": "https://www.goodreads.com/book/show/44442867-meister-eckhart-s-book-of-secrets?from_search=true&from_srp=true&qid=raffuuyerx&rank=7",
+      "platform": "goodreads",
+      "author": "Jon M. Sweeney",
+      "rating": 3.87,
+      "review_count": 391,
+      "want_to_read": null,
+      "scraped_at": "2025-10-31T20:05:54.463971",
+      "relevance_score": 0.259
+    },
+    {
+      "id": "612264",
+      "title": "The Cross He Bore: Meditations on the Sufferings of the Redeemer",
+      "url": "https://www.goodreads.com/book/show/612264.The_Cross_He_Bore?from_search=true&from_srp=true&qid=raffuuyerx&rank=9",
+      "platform": "goodreads",
+      "author": "Frederick S. Leahy",
+      "rating": 4.62,
+      "review_count": 289,
+      "want_to_read": null,
+      "scraped_at": "2025-10-31T20:05:54.489733",
+      "relevance_score": 0.25
+    },
+    {
+      "id": "35030741",
+      "title": "Meister Eckhart's Book of the Heart: Meditations for the Restless Soul",
+      "url": "https://www.goodreads.com/book/show/35030741-meister-eckhart-s-book-of-the-heart?from_search=true&from_srp=true&qid=raffuuyerx&rank=4",
+      "platform": "goodreads",
+      "author": "Jon M. Sweeney",
+      "rating": 4.46,
+      "review_count": 249,
+      "want_to_read": null,
+      "scraped_at": "2025-10-31T20:05:54.417437",
+      "relevance_score": 0.246
+    },
+    {
+      "id": "3148534",
+      "title": "Guided Meditation: With Steven S. Sadleir",
+      "url": "https://www.goodreads.com/book/show/3148534-guided-meditation?from_search=true&from_srp=true&qid=raffuuyerx&rank=5",
+      "platform": "goodreads",
+      "author": "Steven S. Sadleir",
+      "rating": 5.0,
+      "review_count": 0,
+      "want_to_read": null,
+      "scraped_at": "2025-10-31T20:05:54.431981",
+      "relevance_score": 0.23
+    },
+    {
+      "id": "14430651",
+      "title": "In the Holy Quiet: Meditations By Richard S. Gilbert",
+      "url": "https://www.goodreads.com/book/show/14430651-in-the-holy-quiet?from_search=true&from_srp=true&qid=raffuuyerx&rank=10",
+      "platform": "goodreads",
+      "author": "Richard S. Gilbert",
+      "rating": 4.5,
+      "review_count": 4,
+      "want_to_read": null,
+      "scraped_at": "2025-10-31T20:05:54.504518",
+      "relevance_score": 0.23
+    }
+  ],
+  "discussion_urls": [
+    {
+      "platform": "reddit",
+      "url": "https://reddit.com/r/enlightenment/comments/1m91y2i/this_isnt_just_a_spiritual_path_its_a_planetary/",
+      "title": "This isn’t just a spiritual path, it’s a planetary shift, and it’s happening now",
+      "comments": 629,
+      "score": 1095,
+      "subreddit": "enlightenment"
+    },
+    {
+      "platform": "reddit",
+      "url": "https://reddit.com/r/Meditation/comments/1h8r0dp/books_on_meditation_without_buddhist_overtones/",
+      "title": "Books on meditation without buddhist overtones?",
+      "comments": 196,
+      "score": 25,
+      "subreddit": "Meditation"
+    },
+    {
+      "platform": "reddit",
+      "url": "https://reddit.com/r/therapists/comments/1mvmrcv/super_representative_of_rtherapists/",
+      "title": "Super representative of r/therapists",
+      "comments": 172,
+      "score": 1686,
+      "subreddit": "therapists"
+    },
+    {
+      "platform": "reddit",
+      "url": "https://reddit.com/r/Meditation/comments/1mkhimw/best_meditation_book_you_have_ever_read_that/",
+      "title": "Best meditation book you have ever read that deeply affected your meditative performance (Secular, Pragmatic, Practical)",
+      "comments": 133,
+      "score": 95,
+      "subreddit": "Meditation"
+    },
+    {
+      "platform": "reddit",
+      "url": "https://reddit.com/r/occult/comments/1i0okpu/beginner_whos_been_lurking_this_subreddit_the/",
+      "title": "Beginner who's been lurking this subreddit the last 18 months, looking for advice on where to start and which books to buy. Any advice please?",
+      "comments": 113,
+      "score": 148,
+      "subreddit": "occult"
+    },
+    {
+      "platform": "reddit",
+      "url": "https://reddit.com/r/witchcraft/comments/1mgsepu/conversation_could_you_share_your_favorite_books/",
+      "title": "Conversation: Could you share your favorite books, and what they meant to you personally?",
+      "comments": 77,
+      "score": 355,
+      "subreddit": "witchcraft"
+    },
+    {
+      "platform": "reddit",
+      "url": "https://reddit.com/r/RomanceBooks/comments/1me2l8y/ill_flippin_forcefem_zeus_and_put_him_in_bloody/",
+      "title": "I’ll flippin’ forcefem Zeus and put him in bloody bondage for more handholding, male moaning, armpit kink, forehead kisses, femdom, facesitting, and cuddling in romance books. I’m feral right now.",
+      "comments": 67,
+      "score": 374,
+      "subreddit": "RomanceBooks"
+    },
+    {
+      "platform": "reddit",
+      "url": "https://reddit.com/r/sugarlifestyleforum/comments/1n37owg/lighthearted_books_to_attract_potential_sds_in/",
+      "title": "Lighthearted: Books to attract potential SDs in the wild, specifically, alone at bars!",
+      "comments": 64,
+      "score": 31,
+      "subreddit": "sugarlifestyleforum"
+    },
+    {
+      "platform": "reddit",
+      "url": "https://reddit.com/r/stephenking/comments/1i7ryeg/thoughts_of_heart_in_atlantis_i_went_in_looking/",
+      "title": "Thoughts of Heart in Atlantis? I went in looking for more Dark Tower and found a really special book instead.",
+      "comments": 62,
+      "score": 73,
+      "subreddit": "stephenking"
+    },
+    {
+      "platform": "reddit",
+      "url": "https://reddit.com/r/Journaling/comments/1mho0nm/books_that_are_actually_someones_journal/",
+      "title": "Books that are actually someone’s journal",
+      "comments": 58,
+      "score": 87,
+      "subreddit": "Journaling"
+    },
+    {
+      "platform": "reddit",
+      "url": "https://reddit.com/r/Meditation/comments/1m30ss0/is_there_such_a_thing_as_reading_meditation_books/",
+      "title": "Is there such a thing as \"Reading Meditation\"? Books help me more than traditional meditations.",
+      "comments": 56,
+      "score": 36,
+      "subreddit": "Meditation"
+    },
+    {
+      "platform": "reddit",
+      "url": "https://reddit.com/r/SchreckNet/comments/1kfew40/i_recently_found_some_books_here_with_some_things/",
+      "title": "I recently found some books here with some things, what do you think?",
+      "comments": 56,
+      "score": 17,
+      "subreddit": "SchreckNet"
+    },
+    {
+      "platform": "reddit",
+      "url": "https://reddit.com/r/selfimprovement/comments/1nmu4bx/what_book_helped_change_perspective_when_life/",
+      "title": "What book helped change perspective when life felt joyless?",
+      "comments": 47,
+      "score": 110,
+      "subreddit": "selfimprovement"
+    },
+    {
+      "platform": "reddit",
+      "url": "https://reddit.com/r/selfimprovement/comments/1n23wm3/books_youd_recommend_to_a_young_man_about_to/",
+      "title": "Books you’d recommend to a young man about to graduate high school?",
+      "comments": 46,
+      "score": 38,
+      "subreddit": "selfimprovement"
+    },
+    {
+      "platform": "reddit",
+      "url": "https://reddit.com/r/Meditation/comments/1o34enn/book_on_meditation_for_my_boomer_dad/",
+      "title": "Book on meditation for my Boomer dad",
+      "comments": 42,
+      "score": 5,
+      "subreddit": "Meditation"
+    },
+    {
+      "platform": "reddit",
+      "url": "https://reddit.com/r/selfimprovement/comments/1lmdi33/what_books_would_you_recommend_to_get_out_of_a_rut/",
+      "title": "What books would you recommend to get out of a rut?",
+      "comments": 42,
+      "score": 96,
+      "subreddit": "selfimprovement"
+    },
+    {
+      "platform": "reddit",
+      "url": "https://reddit.com/r/Existentialism/comments/1mdxe91/looking_for_a_beginnerfriendly_book_on/",
+      "title": "Looking for a beginner-friendly book on existentialism after reading Being and Nothingness and Meditations",
+      "comments": 38,
+      "score": 16,
+      "subreddit": "Existentialism"
+    },
+    {
+      "platform": "reddit",
+      "url": "https://reddit.com/r/Meditation/comments/1oda7vt/i_want_to_become_more_grounded_and_more_present/",
+      "title": "I want to become more grounded and more present in my everyday life. I do not care about enlightenment. What apps, books, and other resources can you recommend for this goal?",
+      "comments": 34,
+      "score": 23,
+      "subreddit": "Meditation"
+    },
+    {
+      "platform": "reddit",
+      "url": "https://reddit.com/r/therapists/comments/1mw8qy8/do_you_ever_recommend_tv_shows_movies_or_books/",
+      "title": "Do you ever recommend TV shows, movies, or books (fiction) to clients?",
+      "comments": 33,
+      "score": 38,
+      "subreddit": "therapists"
+    },
+    {
+      "platform": "reddit",
+      "url": "https://reddit.com/r/Bible/comments/1nohogc/in_your_opinion_what_books_of_the_bible_are/",
+      "title": "in your opinion, what books of the Bible are essential to read before Revelations?",
+      "comments": 32,
+      "score": 12,
+      "subreddit": "Bible"
+    }
+  ],
+  "subreddit_overlaps": [
+    {
+      "subreddit": "r/AskReddit",
+      "multiplier": 3.9,
+      "user_count": 39,
+      "interpretation": "Askreddit",
+      "segment_type": "Niche",
+      "product_validation": false,
+      "opportunity_level": "LOW"
+    },
+    {
+      "subreddit": "r/booksuggestions",
+      "multiplier": 3.3,
+      "user_count": 33,
+      "interpretation": "Booksuggestions",
+      "segment_type": "Niche",
+      "product_validation": false,
+      "opportunity_level": "LOW"
+    },
+    {
+      "subreddit": "r/Poetry",
+      "multiplier": 3.0,
+      "user_count": 30,
+      "interpretation": "Poetry",
+      "segment_type": "Niche",
+      "product_validation": false,
+      "opportunity_level": "LOW"
+    },
+    {
+      "subreddit": "r/Indiemakeupandmore",
+      "multiplier": 3.0,
+      "user_count": 30,
+      "interpretation": "Indiemakeupandmore",
+      "segment_type": "Niche",
+      "product_validation": false,
+      "opportunity_level": "LOW"
+    },
+    {
+      "subreddit": "r/CasualConversation",
+      "multiplier": 2.8,
+      "user_count": 28,
+      "interpretation": "Casualconversation",
+      "segment_type": "Niche",
+      "product_validation": false,
+      "opportunity_level": "LOW"
+    },
+    {
+      "subreddit": "r/Fantasy",
+      "multiplier": 2.8,
+      "user_count": 28,
+      "interpretation": "Fantasy",
+      "segment_type": "Niche",
+      "product_validation": false,
+      "opportunity_level": "LOW"
+    },
+    {
+      "subreddit": "r/newzealand",
+      "multiplier": 2.2,
+      "user_count": 22,
+      "interpretation": "Newzealand",
+      "segment_type": "Niche",
+      "product_validation": false,
+      "opportunity_level": "LOW"
+    },
+    {
+      "subreddit": "r/kirjallisuus",
+      "multiplier": 2.1,
+      "user_count": 21,
+      "interpretation": "Kirjallisuus",
+      "segment_type": "Niche",
+      "product_validation": false,
+      "opportunity_level": "LOW"
+    },
+    {
+      "subreddit": "r/UncensoredBlogsnark",
+      "multiplier": 2.0,
+      "user_count": 20,
+      "interpretation": "Uncensoredblogsnark",
+      "segment_type": "Niche",
+      "product_validation": false,
+      "opportunity_level": "LOW"
+    },
+    {
+      "subreddit": "r/printSF",
+      "multiplier": 2.0,
+      "user_count": 20,
+      "interpretation": "Printsf",
+      "segment_type": "Niche",
+      "product_validation": false,
+      "opportunity_level": "LOW"
+    }
+  ],
+  "segment_insights": {
+    "total_segments": 10,
+    "segment_breakdown": {
+      "primary": 0,
+      "hidden": 0,
+      "niche": 10
+    },
+    "high_opportunity_segments": 0,
+    "average_overlap_multiplier": 2.71,
+    "top_opportunities": [],
+    "recommendations": [
+      "10 segments NOT mentioned in competitor products - potential blue ocean opportunity"
+    ]
+  },
+  "data_sources_collected": {
+    "amazon_products": 0,
+    "goodreads_books": 10,
+    "youtube_videos": 0,
+    "reddit_discussions": 20,
+    "youtube_discussions": 0,
+    "total_reviews": 3689,
+    "total_comments": 1997
+  },
+  "confidence": 0.79,
+  "user_checkpoint": "approved"
+}

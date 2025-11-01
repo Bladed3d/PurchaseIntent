@@ -1,6 +1,6 @@
 # VoiceCoach V2 - Project Index
 
-**Last Updated:** 2025-10-30 20:10:43
+**Last Updated:** 2025-10-31 20:23:37
 **Auto-generated** by `save-session.py`
 
 ---
@@ -70,8 +70,8 @@
 
 ## 📊 Project Statistics
 
-- **Total Files Indexed:** 229
-- **Total Lines of Code:** 155,825
+- **Total Files Indexed:** 276
+- **Total Lines of Code:** 187,551
 - **Components:** 0
 - **Services:** 0
 - **Hooks:** 0

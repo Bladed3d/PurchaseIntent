@@ -1,16 +1,16 @@
 {
-  "selected_topic": "test topic",
+  "selected_topic": "meditation for beginners",
   "confidence": 100,
-  "composite_score": 93.6,
-  "sources_analyzed": 2,
+  "composite_score": 90.08,
+  "sources_analyzed": 3,
   "all_topics": [
     {
       "rank": 1,
-      "topic": "test topic",
-      "score": 93.6,
+      "topic": "meditation for beginners",
+      "score": 90.08,
       "confidence": 100
     }
   ],
-  "timestamp": "2025-10-31T13:59:52.077190",
+  "timestamp": "2025-10-31T15:49:06.435566",
   "agent": "Agent0_TopicResearch"
 }

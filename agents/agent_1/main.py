@@ -19,7 +19,8 @@ from agents.agent_1.checkpoint import CheckpointManager
 
 
 def main(product_description: str, product_category: str = "general",
-         enable_youtube: bool = True, enable_goodreads: bool = False):
+         enable_youtube: bool = True, enable_goodreads: bool = False,
+         auto_approve: bool = False):
     """Main execution for Agent 1 - Product Researcher"""
     trail = BreadcrumbTrail("Agent1_ProductResearch")
 
@@ -78,7 +79,7 @@ def main(product_description: str, product_category: str = "general",
         report = checkpoint.generate_checkpoint_report(comparables, discussions, overlaps, segment_insights)
 
         try:
-            checkpoint.prompt_user_approval(report)
+            checkpoint.prompt_user_approval(report, auto_approve=auto_approve)
         except ValueError as e:
             trail.fail(Config.LED_ERROR_START + 8, e)
             print("\n[RETRY] Aborted by user")
@@ -110,6 +111,7 @@ if __name__ == "__main__":
                        choices=["book", "software", "saas", "app", "course", "training", "general"])
     parser.add_argument("--no-youtube", action="store_true", help="Disable YouTube (saves quota)")
     parser.add_argument("--enable-goodreads", action="store_true", help="Enable Goodreads (books)")
+    parser.add_argument("--auto-approve", action="store_true", help="Auto-approve checkpoint (for testing)")
     args = parser.parse_args()
 
-    main(args.product_description, args.category, not args.no_youtube, args.enable_goodreads)
+    main(args.product_description, args.category, not args.no_youtube, args.enable_goodreads, args.auto_approve)

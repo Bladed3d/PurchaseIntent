@@ -196,9 +196,13 @@ class CheckpointManager:
 
         return "\n".join(report_lines)
 
-    def prompt_user_approval(self, report: str) -> str:
+    def prompt_user_approval(self, report: str, auto_approve: bool = False) -> str:
         """
         Display report and prompt user for approval
+
+        Args:
+            report: Checkpoint report to display
+            auto_approve: If True, automatically approve without prompting
 
         Returns:
             User's choice: 'approve', 'modify', or 'retry'
@@ -207,6 +211,13 @@ class CheckpointManager:
             ValueError: If user rejects and wants to retry
         """
         print(report)
+
+        if auto_approve:
+            print("\n[AUTO-APPROVE] Automatically approving checkpoint...")
+            self.trail.light(Config.LED_CHECKPOINT_START + 1, {
+                "action": "auto_approved_checkpoint"
+            })
+            return 'approve'
 
         while True:
             choice = input("Your choice [A/M/R]: ").strip().upper()

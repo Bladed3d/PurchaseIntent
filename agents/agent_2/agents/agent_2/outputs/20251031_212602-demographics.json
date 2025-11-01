@@ -1,0 +1,266 @@
+{
+  "agent": "demographics_analyst",
+  "status": "complete",
+  "timestamp": "2025-10-31T21:26:02.211191",
+  "demographics_overall": {
+    "age_range": "millennial",
+    "age_distribution": {
+      "boomer": 20.0,
+      "gen_x": 10.0,
+      "gen_z": 30.0,
+      "millennial": 40.0
+    },
+    "gender_distribution": {
+      "unknown": 100.0
+    },
+    "top_occupations": [
+      {
+        "occupation": "student",
+        "frequency": 60.0,
+        "count": 6
+      },
+      {
+        "occupation": "entrepreneur",
+        "frequency": 10.0,
+        "count": 1
+      },
+      {
+        "occupation": "software_developer",
+        "frequency": 10.0,
+        "count": 1
+      },
+      {
+        "occupation": "teacher",
+        "frequency": 10.0,
+        "count": 1
+      },
+      {
+        "occupation": "freelancer",
+        "frequency": 10.0,
+        "count": 1
+      }
+    ],
+    "top_pain_points": [
+      {
+        "pain": "focus",
+        "mentions": 21,
+        "percentage": 4.4
+      },
+      {
+        "pain": "scaling",
+        "mentions": 6,
+        "percentage": 1.3
+      },
+      {
+        "pain": "procrastination",
+        "mentions": 2,
+        "percentage": 0.4
+      }
+    ],
+    "top_interests": [
+      "passive_income",
+      "career_advancement"
+    ],
+    "life_stage": "professional"
+  },
+  "demographic_clusters": [
+    {
+      "cluster_id": "unknown_unknown",
+      "size": 457,
+      "age_range": "unknown",
+      "age_distribution": {},
+      "gender_distribution": {
+        "unknown": 100.0
+      },
+      "top_occupations": [
+        {
+          "occupation": "unknown",
+          "frequency": 100.0,
+          "count": 457
+        }
+      ],
+      "top_pain_points": [
+        {
+          "pain": "focus",
+          "mentions": 18,
+          "percentage": 3.9
+        },
+        {
+          "pain": "scaling",
+          "mentions": 6,
+          "percentage": 1.3
+        },
+        {
+          "pain": "procrastination",
+          "mentions": 2,
+          "percentage": 0.4
+        }
+      ],
+      "top_interests": [
+        "career_advancement"
+      ],
+      "life_stage": "professional"
+    },
+    {
+      "cluster_id": "student_unknown",
+      "size": 5,
+      "age_range": "unknown",
+      "age_distribution": {},
+      "gender_distribution": {
+        "unknown": 100.0
+      },
+      "top_occupations": [
+        {
+          "occupation": "student",
+          "frequency": 100.0,
+          "count": 5
+        }
+      ],
+      "top_pain_points": [],
+      "top_interests": [
+        "passive_income"
+      ],
+      "life_stage": "student"
+    },
+    {
+      "cluster_id": "unknown_gen_z",
+      "size": 3,
+      "age_range": "gen_z",
+      "age_distribution": {
+        "gen_z": 100.0
+      },
+      "gender_distribution": {
+        "unknown": 100.0
+      },
+      "top_occupations": [
+        {
+          "occupation": "unknown",
+          "frequency": 100.0,
+          "count": 3
+        }
+      ],
+      "top_pain_points": [
+        {
+          "pain": "focus",
+          "mentions": 1,
+          "percentage": 33.3
+        }
+      ],
+      "top_interests": [],
+      "life_stage": "student"
+    },
+    {
+      "cluster_id": "unknown_millennial",
+      "size": 3,
+      "age_range": "millennial",
+      "age_distribution": {
+        "millennial": 100.0
+      },
+      "gender_distribution": {
+        "unknown": 100.0
+      },
+      "top_occupations": [
+        {
+          "occupation": "unknown",
+          "frequency": 100.0,
+          "count": 3
+        }
+      ],
+      "top_pain_points": [
+        {
+          "pain": "focus",
+          "mentions": 1,
+          "percentage": 33.3
+        }
+      ],
+      "top_interests": [],
+      "life_stage": "professional"
+    }
+  ],
+  "validation": {
+    "confidence_score": 0.3,
+    "confidence_percentage": 30.0,
+    "breakdown": {
+      "source_agreement": 0.0,
+      "sample_size_score": 1.0,
+      "benchmark_match": 0.0
+    },
+    "meets_threshold": false,
+    "checkpoint_result": {
+      "checkpoint_passed": false,
+      "user_approval": "auto_approved",
+      "confidence_score": 0.3
+    }
+  },
+  "data_sources": {
+    "reddit": {
+      "sample_size": 476,
+      "age_range": "millennial",
+      "age_distribution": {
+        "boomer": 20.0,
+        "gen_x": 10.0,
+        "gen_z": 30.0,
+        "millennial": 40.0
+      },
+      "gender_distribution": {
+        "unknown": 100.0
+      },
+      "top_occupations": [
+        {
+          "occupation": "student",
+          "frequency": 60.0,
+          "count": 6
+        },
+        {
+          "occupation": "entrepreneur",
+          "frequency": 10.0,
+          "count": 1
+        },
+        {
+          "occupation": "software_developer",
+          "frequency": 10.0,
+          "count": 1
+        },
+        {
+          "occupation": "teacher",
+          "frequency": 10.0,
+          "count": 1
+        },
+        {
+          "occupation": "freelancer",
+          "frequency": 10.0,
+          "count": 1
+        }
+      ],
+      "top_pain_points": [
+        {
+          "pain": "focus",
+          "mentions": 21,
+          "percentage": 4.4
+        },
+        {
+          "pain": "scaling",
+          "mentions": 6,
+          "percentage": 1.3
+        },
+        {
+          "pain": "procrastination",
+          "mentions": 2,
+          "percentage": 0.4
+        }
+      ],
+      "top_interests": [
+        "passive_income",
+        "career_advancement"
+      ],
+      "life_stage": "professional"
+    }
+  },
+  "metadata": {
+    "total_profiles": 476,
+    "total_data_points": 476,
+    "num_sources": 1,
+    "num_clusters": 4,
+    "input_file": "../agent_1/outputs/20251031-201253-agent1-output.json"
+  }
+}

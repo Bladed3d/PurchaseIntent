@@ -28,6 +28,7 @@ from agents.agent_2.demographics_extractor import DemographicsExtractor
 from agents.agent_2.aggregator import DemographicsAggregator
 from agents.agent_2.confidence_calculator import ConfidenceCalculator
 from agents.agent_2.checkpoint import CheckpointGate
+from agents.agent_2.source_tiers import SourceTiers
 
 
 def main(input_path: str = None, test_data_path: str = None, auto_approve: bool = False):
@@ -129,11 +130,23 @@ def main(input_path: str = None, test_data_path: str = None, auto_approve: bool 
             print(f"  [FAIL] {source_name} extraction failed: {e}")
             # Continue with other sources
 
-    # Verify we have minimum required sources
-    if len(source_demographics) < Config.MIN_DATA_SOURCES:
+    # Intelligent pipeline: Analyze Tier 1 source coverage
+    trail.light(2545, {
+        "action": "tier_1_analysis",
+        "sources_found": list(source_demographics.keys()),
+        "total_sources": len(source_demographics)
+    })
+
+    print(f"\n[*] Tier 1 Pipeline Analysis:")
+    print(f"    Sources with data: {len(source_demographics)}")
+    print(f"    Sources: {', '.join(source_demographics.keys())}")
+
+    # Check if we have NO sources at all (FAIL LOUDLY)
+    if len(source_demographics) == 0:
         error = ValueError(
-            f"Need at least {Config.MIN_DATA_SOURCES} data source(s), got {len(source_demographics)}. "
-            f"Available sources: {list(source_demographics.keys())}"
+            "NO DATA SOURCES AVAILABLE. No demographic data found across any source.\n"
+            "This topic likely has insufficient demand or market presence.\n"
+            "Recommendation: Choose a different topic with stronger market signals."
         )
         trail.fail(Config.LED_EXTRACTION_START + 1, error)
         print(f"\n[FAIL] {error}")

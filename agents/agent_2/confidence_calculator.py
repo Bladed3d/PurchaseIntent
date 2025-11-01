@@ -49,9 +49,6 @@ class ConfidenceCalculator:
         if not source_demographics:
             raise ValueError("Cannot calculate confidence with empty source demographics")
 
-        if len(source_demographics) < 2:
-            raise ValueError(f"Need at least 2 sources for triangulation, got {len(source_demographics)}")
-
         self.trail.light(2570, {
             "action": "calculating_confidence",
             "num_sources": len(source_demographics),
@@ -59,7 +56,19 @@ class ConfidenceCalculator:
         })
 
         # Calculate source agreement score
-        source_agreement = self._calculate_source_agreement(source_demographics)
+        # SPECIAL CASE: Single source = cannot triangulate, source_agreement = 0.0
+        if len(source_demographics) == 1:
+            self.trail.light(2546, {
+                "warning": "single_source_no_triangulation",
+                "message": "Only 1 data source - source agreement score set to 0.0 (cannot triangulate)",
+                "source": list(source_demographics.keys())[0]
+            })
+            source_agreement = 0.0
+            print(f"[!] WARNING: Single data source - no triangulation possible")
+            print(f"    Source agreement score: 0.0 (40% weight penalty)")
+            print(f"    This will significantly reduce overall confidence")
+        else:
+            source_agreement = self._calculate_source_agreement(source_demographics)
 
         # Calculate sample size score
         sample_size_score = self._calculate_sample_size_score(sample_size)

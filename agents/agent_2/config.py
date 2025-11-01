@@ -30,8 +30,10 @@ class Agent2Config:
     NUM_DEMOGRAPHIC_CLUSTERS = int(os.getenv('AGENT_2_NUM_CLUSTERS', '4'))
 
     # Confidence Thresholds
-    MIN_DATA_SOURCES = int(os.getenv('AGENT_2_MIN_DATA_SOURCES', '1'))  # Minimum sources (1=single source OK, 2=triangulation required)
-    CONFIDENCE_THRESHOLD = float(os.getenv('AGENT_2_CONFIDENCE_THRESHOLD', '0.80'))
+    # NOTE: MIN_DATA_SOURCES removed - intelligent pipeline handles source routing dynamically
+    HIGH_CONFIDENCE_THRESHOLD = float(os.getenv('AGENT_2_HIGH_CONFIDENCE', '0.70'))  # >70% = proceed autonomously
+    LOW_CONFIDENCE_THRESHOLD = float(os.getenv('AGENT_2_LOW_CONFIDENCE', '0.40'))   # <40% = fail loudly
+    CONFIDENCE_THRESHOLD = float(os.getenv('AGENT_2_CONFIDENCE_THRESHOLD', '0.80'))  # Checkpoint gate threshold
     MIN_SOURCE_AGREEMENT = float(os.getenv('AGENT_2_MIN_SOURCE_AGREEMENT', '0.70'))
     MIN_BENCHMARK_MATCH = float(os.getenv('AGENT_2_MIN_BENCHMARK_MATCH', '0.80'))
 
@@ -47,6 +49,10 @@ class Agent2Config:
     LED_INIT = 2500
     LED_SCRAPING_START = 2510
     LED_EXTRACTION_START = 2540
+    LED_PIPELINE_ANALYSIS = 2545  # Tier 1 analysis
+    LED_PIPELINE_DECISION = 2546  # Single-source warning
+    LED_PIPELINE_CONSULTATION = 2547  # User consultation (medium confidence)
+    LED_PIPELINE_FAILURE = 2548  # Low confidence failure
     LED_CLUSTERING_START = 2560
     LED_VALIDATION_START = 2570
     LED_CHECKPOINT_START = 2575

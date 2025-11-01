@@ -63,6 +63,10 @@ class AmazonProductAPI:
             "max_results": min(max_results, 10)  # API limit
         })
 
+        # Rate limit protection: Amazon PA API allows 1 request/second
+        # Add delay to ensure we never hit throttling
+        time.sleep(Config.AMAZON_DELAY)
+
         try:
             # Amazon PA API limits to 10 results per search
             item_count = min(max_results, 10)

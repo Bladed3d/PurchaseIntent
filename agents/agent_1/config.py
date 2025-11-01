@@ -30,6 +30,7 @@ class Agent1Config:
     RATE_LIMIT_DELAY = float(os.getenv('AGENT_1_RATE_LIMIT_DELAY', '2.0'))
     REDDIT_DELAY = 2.0  # Delay between Reddit API calls
     YOUTUBE_DELAY = 1.0  # Delay between YouTube API calls
+    AMAZON_DELAY = 2.0  # Delay before Amazon API calls (1 req/sec limit)
 
     # Query Limits
     MAX_COMPARABLES = int(os.getenv('AGENT_1_MAX_COMPARABLES', '10'))
